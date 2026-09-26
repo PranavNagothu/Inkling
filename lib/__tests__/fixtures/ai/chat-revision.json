@@ -1,0 +1,17 @@
+{
+  "id": "chatcmpl-fixture-2",
+  "object": "chat.completion",
+  "model": "gpt-5-mini",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "message": {
+        "role": "assistant",
+        "content": [
+          { "type": "text", "text": "```json\n{\"before\":\"f'(x) times g'(x)\",\"after\":\"f'(g(x)) times g'(x)\",\"misconception\":\"Evaluated the outer derivative at x instead of at the inner function g(x).\",\"conceptLabel\":\"Chain rule evaluation\",\"cosmetic\":false}\n```" }
+        ]
+      }
+    }
+  ]
+}

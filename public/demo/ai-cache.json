@@ -1,0 +1,250 @@
+{
+  "version": 1,
+  "lectureId": "demo-chain-rule",
+  "note": "DEMO_MODE fixtures for the bundled chain-rule lecture, keyed by [fromMs, toMs) of lecture time. Served offline; validated by lib/__tests__/ai-demo.test.ts with the same validators as live model output.",
+  "entries": [
+    {
+      "fromMs": 0,
+      "toMs": 20000,
+      "label": "Composition of functions",
+      "help": {
+        "reexplain": "A composition is one function fed into another: y = f(g(x)). Think of it as layers. The inner function g acts on x first, then the outer function f acts on whatever g produced. The chain rule is the recipe for differentiating those layers: handle the outside, then account for how fast the inside is changing.",
+        "mcq": {
+          "q": "In y = sin(x^2), which function is the inner one?",
+          "options": ["sin(u)", "x^2", "x", "cos(x^2)"],
+          "answerIdx": 1,
+          "why": "x^2 is computed first and then fed into sine, so x^2 is the inner function and sine is the outer one."
+        }
+      }
+    },
+    {
+      "fromMs": 20000,
+      "toMs": 36000,
+      "label": "Evaluating the outer derivative",
+      "help": {
+        "reexplain": "The derivative of f(g(x)) is f'(g(x)) times g'(x). The easy slip is writing f'(x). The outer derivative must be evaluated at the inner function, because f only ever sees g(x) as its input. So differentiate f as usual, but plug g(x) back in where x was, then multiply by g'(x).",
+        "mcq": {
+          "q": "If f(u) = u^3 and g(x) = 2x + 5, what is the derivative of f(g(x))?",
+          "options": ["3x^2 * 2", "3(2x + 5)^2 * 2", "3(2x + 5)^2", "(2x + 5)^3 * 2"],
+          "answerIdx": 1,
+          "why": "f'(u) = 3u^2 is evaluated at u = 2x + 5, then multiplied by g'(x) = 2. Using 3x^2 evaluates the outer derivative at x instead of at the inside."
+        }
+      },
+      "revision": {
+        "before": "f'(x) times g'(x)",
+        "after": "f'(g(x)) times g'(x)",
+        "misconception": "Evaluated the outer derivative at x instead of at the inner function g(x).",
+        "conceptLabel": "Evaluating the outer derivative",
+        "cosmetic": false
+      }
+    },
+    {
+      "fromMs": 36000,
+      "toMs": 74000,
+      "label": "Multiplying the inner derivative",
+      "help": {
+        "reexplain": "For y = (3x + 1)^2, the outer function is u^2 and the inner is 3x + 1. The outer derivative gives 2(3x + 1). That is only half the job: the inside changes three times as fast as x, so you multiply by 3. The answer is 6(3x + 1). Stopping at 2(3x + 1) is the most common chain rule mistake.",
+        "mcq": {
+          "q": "What is the derivative of (5x - 2)^2?",
+          "options": ["2(5x - 2)", "10(5x - 2)", "10x", "2(5x - 2) + 5"],
+          "answerIdx": 1,
+          "why": "The outer derivative 2(5x - 2) is multiplied by the inner derivative 5. Forgetting that factor gives 2(5x - 2); adding it instead of multiplying is also wrong."
+        }
+      },
+      "revision": {
+        "before": "dy/dx = 2(3x + 1)",
+        "after": "dy/dx = 2(3x + 1) times 3 = 6(3x + 1)",
+        "misconception": "Stopped after the outer derivative and forgot to multiply by the inner derivative, 3.",
+        "conceptLabel": "Multiplying the inner derivative",
+        "cosmetic": false
+      }
+    },
+    {
+      "fromMs": 74000,
+      "toMs": 87000,
+      "label": "Leibniz notation",
+      "help": {
+        "reexplain": "In Leibniz notation the chain rule reads dy/dx = dy/du times du/dx, where u is the inner function. It looks like the du's cancel, which is a handy memory aid: to get from x to y you pass through u, and the rates of change multiply along the way. It is a mnemonic, not literal fraction arithmetic.",
+        "mcq": {
+          "q": "If y = u^4 and u = x^2 + 1, which product gives dy/dx?",
+          "options": ["4u^3 times 2x", "4u^3 plus 2x", "4x^3 times 2x", "u^4 times 2x"],
+          "answerIdx": 0,
+          "why": "dy/du = 4u^3 and du/dx = 2x, and the chain rule multiplies them. Writing 4x^3 differentiates with respect to the wrong variable."
+        }
+      }
+    },
+    {
+      "fromMs": 87000,
+      "toMs": 107000,
+      "label": "Sine of x squared",
+      "help": {
+        "reexplain": "For sin(x^2), sine is the outer function and x^2 is the inner one. Differentiating the outside gives cos(x^2), with the inside left untouched. That is only half of the chain rule: the inside is changing too, at rate 2x, so you multiply by it. The derivative is cos(x^2) times 2x. Stopping at cos(x^2) forgets the inner derivative.",
+        "mcq": {
+          "q": "What is the derivative of sin(x^2)?",
+          "options": ["cos(x^2)", "2x cos(x)", "2x cos(x^2)", "cos(2x)"],
+          "answerIdx": 2,
+          "why": "The outer derivative cos(x^2) is multiplied by the inner derivative 2x. cos(x^2) alone forgets the inner derivative; cos(x) loses the inside; cos(2x) differentiates the wrong part."
+        }
+      },
+      "revision": {
+        "before": "d/dx sin(x^2) = cos(x^2)",
+        "after": "d/dx sin(x^2) = cos(x^2) times 2x",
+        "misconception": "Forgot the inner derivative: stopped at cos(x^2) instead of multiplying by 2x, the derivative of x^2.",
+        "conceptLabel": "Sine of x squared",
+        "cosmetic": false
+      }
+    },
+    {
+      "fromMs": 107000,
+      "toMs": 119500,
+      "label": "Exponential chain rule",
+      "help": {
+        "reexplain": "The derivative of e^u is e^u itself, so for e^(5x) the outer derivative is e^(5x) again. The chain rule still applies: multiply by the derivative of the exponent, 5. So the derivative of e^(5x) is 5e^(5x). Whenever the exponent is more than plain x, its derivative shows up as a factor.",
+        "mcq": {
+          "q": "What is the derivative of e^(3x)?",
+          "options": ["e^(3x)", "3e^(3x)", "3x e^(3x - 1)", "e^3"],
+          "answerIdx": 1,
+          "why": "e^u differentiates to itself, then you multiply by the exponent's derivative, 3. The power-rule style answer treats the exponent like a power, which it is not."
+        }
+      }
+    },
+    {
+      "fromMs": 119500,
+      "toMs": 148500,
+      "label": "Nested chain rule",
+      "help": {
+        "reexplain": "With three layers, like the square root of sin(x^2), apply the chain rule twice, working from the outside in. Differentiate the square root and keep sin(x^2) inside it, multiply by the derivative of sine with x^2 inside, then multiply by 2x. Each layer contributes exactly one factor to the product.",
+        "mcq": {
+          "q": "How many factors does the derivative of sqrt(sin(x^2)) have?",
+          "options": ["One", "Two", "Three", "Four"],
+          "answerIdx": 2,
+          "why": "Three layers give three factors: 1/(2 sqrt(sin(x^2))), cos(x^2) and 2x. Each layer of the composition contributes one factor."
+        }
+      },
+      "revision": {
+        "before": "1/(2 sqrt(sin x^2)) times cos(x^2)",
+        "after": "1/(2 sqrt(sin x^2)) times cos(x^2) times 2x",
+        "misconception": "Applied the chain rule once but missed the innermost layer's factor, 2x.",
+        "conceptLabel": "Nested chain rule",
+        "cosmetic": false
+      }
+    },
+    {
+      "fromMs": 148500,
+      "toMs": 171000,
+      "label": "Powers of polynomials",
+      "help": {
+        "reexplain": "For (x^2 + 1)^10, don't expand. Treat the bracket as one inner piece u. The power rule on the outside gives 10(x^2 + 1)^9, and the chain rule adds the inside's derivative, 2x. So the answer is 20x(x^2 + 1)^9. Writing u for the inner piece keeps the layers clear when you get lost.",
+        "mcq": {
+          "q": "What is the derivative of (x^2 + 1)^10?",
+          "options": ["10(x^2 + 1)^9", "20x(x^2 + 1)^9", "10(2x)^9", "(x^2 + 1)^9 * 2x"],
+          "answerIdx": 1,
+          "why": "Power rule on the outside gives 10(x^2 + 1)^9, times the inner derivative 2x, which is 20x(x^2 + 1)^9. Leaving out 2x forgets the inside."
+        }
+      },
+      "revision": {
+        "before": "10(x^2 + 1)^9",
+        "after": "10(x^2 + 1)^9 times 2x",
+        "misconception": "Used the power rule on the bracket but forgot to multiply by the derivative of the inside.",
+        "conceptLabel": "Powers of polynomials",
+        "cosmetic": false
+      }
+    },
+    {
+      "fromMs": 171000,
+      "toMs": 209000,
+      "label": "Implicit differentiation link",
+      "help": {
+        "reexplain": "When you differentiate y^2 with respect to x, y is secretly a function of x, so y^2 is a composition. The outer derivative is 2y, and the chain rule multiplies by dy/dx. That extra dy/dx is exactly the chain rule at work, and it is the heart of implicit differentiation next week.",
+        "mcq": {
+          "q": "What is d/dx of y^2 when y depends on x?",
+          "options": ["2y", "2y dy/dx", "2x", "y^2 dy/dx"],
+          "answerIdx": 1,
+          "why": "y is the inner function of x, so the outer derivative 2y is multiplied by the inner derivative dy/dx."
+        }
+      }
+    },
+    {
+      "fromMs": 209000,
+      "toMs": 222000,
+      "label": "Chain rule recipe",
+      "help": {
+        "reexplain": "Here is the whole recipe in three steps. First, identify the outer and the inner function. Second, differentiate the outer function while keeping the inner function inside it, unchanged. Third, multiply by the derivative of the inner function. Most mistakes come from skipping step three, or from changing the inside during step two.",
+        "mcq": {
+          "q": "After differentiating the outer function, what is the last step of the chain rule?",
+          "options": [
+            "Multiply by the derivative of the inner function",
+            "Add the derivative of the inner function",
+            "Replace the inner function with x",
+            "Differentiate the outer function a second time"
+          ],
+          "answerIdx": 0,
+          "why": "The chain rule multiplies the outer derivative, evaluated at the inside, by the inner derivative. Adding or dropping that factor gives a wrong answer."
+        }
+      },
+      "revision": {
+        "before": "outer derivative, then add inner derivative",
+        "after": "outer derivative, then multiply by inner derivative",
+        "misconception": "Thought the inner derivative is added to the outer derivative instead of multiplied.",
+        "conceptLabel": "Chain rule recipe",
+        "cosmetic": false
+      }
+    },
+    {
+      "fromMs": 222000,
+      "toMs": 288000,
+      "label": "Chain versus product rule",
+      "help": {
+        "reexplain": "Ask where x sits. If x is inside something, like sin(x^2), use the chain rule. If two functions of x sit next to each other, multiplied, like x sin(x), use the product rule. Some problems need both: for x^2 e^(3x), the product rule splits it, and the chain rule handles e^(3x), giving 3e^(3x).",
+        "mcq": {
+          "q": "Which rules does the derivative of x^2 e^(3x) need?",
+          "options": ["Only the chain rule", "Only the product rule", "Both the product and chain rules", "Neither: use the power rule"],
+          "answerIdx": 2,
+          "why": "x^2 and e^(3x) are multiplied, so the product rule applies, and e^(3x) has 3x inside, so its derivative needs the chain rule."
+        }
+      },
+      "revision": {
+        "before": "2x e^(3x) + x^2 e^(3x)",
+        "after": "2x e^(3x) + 3x^2 e^(3x)",
+        "misconception": "Differentiated e^(3x) as e^(3x), forgetting the chain rule factor 3 inside the product rule.",
+        "conceptLabel": "Chain versus product rule",
+        "cosmetic": false
+      }
+    },
+    {
+      "fromMs": 288000,
+      "toMs": 317000,
+      "label": "Quotients as powers",
+      "help": {
+        "reexplain": "1/(x^2 + 4) can be rewritten as (x^2 + 4)^(-1), a power of an inner function. The power rule gives -1(x^2 + 4)^(-2), and the chain rule multiplies by 2x. The result is -2x/(x^2 + 4)^2. Rewriting as a negative power lets the chain rule do the work instead of the quotient rule.",
+        "mcq": {
+          "q": "What is the derivative of 1/(x^2 + 4)?",
+          "options": ["-1/(x^2 + 4)^2", "-2x/(x^2 + 4)^2", "1/(2x)", "2x/(x^2 + 4)^2"],
+          "answerIdx": 1,
+          "why": "-1(x^2 + 4)^(-2) times the inner derivative 2x is -2x/(x^2 + 4)^2. Leaving out 2x or the minus sign are the usual slips."
+        }
+      }
+    },
+    {
+      "fromMs": 317000,
+      "toMs": 360000,
+      "label": "Sine squared trap",
+      "help": {
+        "reexplain": "sin^2(x) means (sin x)^2, so the outer function is u^2 and the inner function is sin x. The outer derivative is 2 sin x, and the inner derivative is cos x, so the answer is 2 sin x cos x, which equals sin(2x). It is not cos^2(x), and it is not 2 sin x alone.",
+        "mcq": {
+          "q": "What is the derivative of sin^2(x)?",
+          "options": ["cos^2(x)", "2 sin x", "2 sin x cos x", "2 cos x"],
+          "answerIdx": 2,
+          "why": "Outer u^2 gives 2 sin x, times the inner derivative cos x. cos^2(x) differentiates the wrong layer; 2 sin x forgets the inner factor."
+        }
+      },
+      "revision": {
+        "before": "cos^2(x)",
+        "after": "2 sin x cos x",
+        "misconception": "Differentiated the inner sine and kept the square, instead of treating the square as the outer function.",
+        "conceptLabel": "Sine squared trap",
+        "cosmetic": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  // Used by tsx for the TypeScript scripts in this folder (npm run seed:demo). Same settings as the
+  // app, plus a stand-in for Next's `server-only` marker (Next resolves the real one when bundling).
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["../*"],
+      "server-only": ["../lib/__tests__/server-only.stub.ts"]
+    }
+  }
+}

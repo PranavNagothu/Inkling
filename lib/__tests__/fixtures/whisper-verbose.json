@@ -1,0 +1,20 @@
+{
+  "task": "transcribe",
+  "language": "english",
+  "duration": 6.52,
+  "text": "Okay, today we're looking at the chain rule.",
+  "words": [
+    { "word": "Okay,", "start": 0.0, "end": 0.42 },
+    { "word": " today", "start": 0.62, "end": 0.98 },
+    { "word": "we're", "start": 0.98, "end": 1.2 },
+    { "word": "", "start": 1.2, "end": 1.2 },
+    { "word": "looking", "start": 1.2, "end": 1.5599999 },
+    { "word": "at", "start": 1.56, "end": 1.7 },
+    { "word": "the", "start": 1.7, "end": 1.82 },
+    { "word": "chain", "start": 1.82, "end": 2.1 },
+    { "word": "rule.", "start": 2.08, "end": 2.5 }
+  ],
+  "segments": [
+    { "id": 0, "seek": 0, "start": 0.0, "end": 2.5, "text": " Okay, today we're looking at the chain rule." }
+  ]
+}

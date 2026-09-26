@@ -1,0 +1,18 @@
+{
+  "id": "chatcmpl-fixture-1",
+  "object": "chat.completion",
+  "created": 1790000000,
+  "model": "gpt-5-mini",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "message": {
+        "role": "assistant",
+        "refusal": null,
+        "content": "{\"reexplain\":\"When one function sits inside another, differentiate the outside first but leave the inside untouched, then multiply by the derivative of the inside. For sin(x^2), the outside gives cos(x^2) and the inside gives 2x, so the answer is cos(x^2) times 2x.\",\"mcq\":{\"q\":\"What is the derivative of sin(x^2)?\",\"options\":[\"cos(x^2)\",\"cos(x^2) * 2x\",\"cos(2x)\",\"2x * sin(x^2)\"],\"answerIdx\":1,\"why\":\"The outer derivative cos is evaluated at the inside, x^2, then multiplied by the inner derivative 2x. Stopping at cos(x^2) forgets the inner factor.\"}}"
+      }
+    }
+  ],
+  "usage": { "prompt_tokens": 412, "completion_tokens": 138, "total_tokens": 550 }
+}

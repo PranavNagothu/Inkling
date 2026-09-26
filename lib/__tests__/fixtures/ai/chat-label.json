@@ -1,0 +1,6 @@
+{
+  "id": "chatcmpl-fixture-3",
+  "object": "chat.completion",
+  "model": "grok-4-fast-non-reasoning",
+  "choices": [{ "index": 0, "finish_reason": "stop", "message": { "role": "assistant", "content": "{\"label\":\"Outer and inner functions\"}" } }]
+}
