@@ -2,6 +2,8 @@
 
 **Every other app deletes your mistakes. We keep them.**
 
+**Live:** <https://www.inklingapp.tech> · **Demo video (2:59):** <https://youtu.be/HAl0wWfNS7U>
+
 Inkling is a note-taking canvas for lectures (built for the iPad + Pencil) that keeps what you erase.
 Erased handwriting stays as _ghost ink_; Inkling notices where you hesitated (slower writing,
 erasing, going quiet while the lecturer keeps talking), pairs each erase with its correction, and

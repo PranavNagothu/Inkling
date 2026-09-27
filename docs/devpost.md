@@ -1,7 +1,7 @@
 # Inkling: Devpost submission
 
-> Placeholders to fill in before submitting: **[YouTube link]**.
-> Live app: https://inklingapp.tech
+> Demo video: https://youtu.be/HAl0wWfNS7U
+> Live app: https://www.inklingapp.tech (backup: https://inkling-production-fdf3.up.railway.app)
 > GitHub: https://github.com/PranavNagothu/Inkling
 
 ---
@@ -116,7 +116,7 @@ I used Notability Pro during the build as my research and design notebook. I rec
 - **Voice:** ElevenLabs (stock voice "Rachel" by default).
 - **Models:** Google Gemini `gemini-3.1-flash-lite`; `openai/gpt-oss-120b` and `openai/gpt-oss-20b` served by Groq.
 - **Planning and research:** Notability Pro.
-- **Links:** Demo video [YouTube link] · Live app https://inklingapp.tech · Code https://github.com/PranavNagothu/Inkling
+- **Links:** Demo video https://youtu.be/HAl0wWfNS7U · Live app https://www.inklingapp.tech · Code https://github.com/PranavNagothu/Inkling
 
 ---
 
