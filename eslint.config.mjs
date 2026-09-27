@@ -21,6 +21,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vercel build output (`vercel build` / scripts/vercel-build.mjs).
+    ".vercel/**",
   ]),
 ]);
 

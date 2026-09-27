@@ -41,6 +41,8 @@ describe('demoResetMinutes / keepVisitorMinutes', () => {
     expect(reset.demoResetMinutes({ DEMO_MODE: '1', DEMO_RESET_MINUTES: '0' })).toBeNull();
     expect(reset.demoResetMinutes({ DEMO_MODE: '1', DEMO_RESET_MINUTES: 'soon' })).toBeNull();
     expect(reset.demoResetMinutes({ DEMO_MODE: '1', DEMO_RESET_MINUTES: '0.001' })).toBe(0.05);
+    // Off on Vercel: every function instance seeds its own throwaway demo (lib/vercelDemo).
+    expect(reset.demoResetMinutes({ DEMO_MODE: '1', DEMO_RESET_MINUTES: '30', VERCEL: '1' })).toBeNull();
   });
 
   it('keeps visitor sessions for 60 minutes by default', () => {

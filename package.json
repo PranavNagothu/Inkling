@@ -10,6 +10,7 @@
     "build": "next build",
     "start": "next start",
     "start:railway": "node scripts/start-prod.mjs",
+    "vercel-build": "node scripts/vercel-build.mjs",
     "lint": "eslint --ignore-pattern 'landing/**' --ignore-pattern '.next-*/**'",
     "test": "vitest run",
     "test:e2e": "playwright test",

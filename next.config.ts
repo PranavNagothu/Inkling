@@ -19,10 +19,23 @@ const nextConfig: NextConfig = {
   // Build output folder. `.next` by default; e2e and preview servers pass INKLING_DIST_DIR so a
   // second `next dev` can run next to the everyday one (Next locks `<distDir>/dev` per server).
   distDir: process.env.INKLING_DIST_DIR || ".next",
+  // Vercel (scripts/vercel-build.mjs): a self-contained server in .next/standalone, deployed as ONE
+  // Vercel function so pages and API routes share the same instance (and its /tmp SQLite demo).
+  ...(process.env.INKLING_STANDALONE === "1" ? { output: "standalone" as const } : {}),
   // Loaded with Node's require instead of bundled: better-sqlite3 is a native addon, pg (Tiger Data
   // / Postgres driver) is on Next's default list anyway, and PGlite ships WASM + data files that
   // must be read from node_modules (DATABASE_URL=pglite:… local runs only; see lib/dbPostgres).
   serverExternalPackages: ["better-sqlite3", "pg", "@electric-sql/pglite"],
+  // Files read at runtime through computed paths, which output file tracing can't see (matters on
+  // Vercel, where each function only gets its traced files; harmless elsewhere):
+  // - better-sqlite3 picks its native addon from prebuilds/<platform>-<arch>.node at runtime. Vercel
+  //   functions are linux (x64 by default, arm64 optional) glibc; the addon is N-API (Node >= 22.14).
+  // - the demo lecture's audio, streamed with Range support by the media route from public/demo.
+  // Route keys are picomatch globs matched anywhere in the route (`contains`), so "/*" is every route.
+  outputFileTracingIncludes: {
+    "/*": ["./node_modules/better-sqlite3/prebuilds/linux-x64.node", "./node_modules/better-sqlite3/prebuilds/linux-arm64.node"],
+    "/api/lectures/*/media": ["./public/demo/lecture.wav"],
+  },
   // The landing page's images are pre-sized static files; no optimizer needed.
   images: { unoptimized: true },
   poweredByHeader: false,

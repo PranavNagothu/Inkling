@@ -1,8 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 3100;
+// E2E_PORT / E2E_DEMO_PORT move the servers, e.g. to run next to another checkout's e2e servers.
+const PORT = Number(process.env.E2E_PORT) || 3100;
 /** The production demo server (`npm run demo` on its own port and database). */
-const DEMO_PORT = 3101;
+const DEMO_PORT = Number(process.env.E2E_DEMO_PORT) || 3101;
 const PG = process.env.INKLING_TEST_PG === "1";
 
 /** No real AI or voices in tests, even if the developer has keys configured. */

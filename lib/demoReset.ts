@@ -19,6 +19,7 @@ import { DEMO_LECTURE } from "./demo";
 import { isDemoMode } from "./demoMode";
 import { allDemoSessionIds, seedDemo, unlinkAll } from "./demoSeed";
 import { withLectureLock } from "./gaps";
+import { onVercel } from "./paths";
 import { resolvePdfPath } from "./storage";
 
 type Env = Record<string, string | undefined>;
@@ -34,10 +35,12 @@ const positive = (raw: string | undefined): number | null => {
 /**
  * Minutes between resets, or null (off). Only in DEMO_MODE, and only when DEMO_RESET_MINUTES is set
  * (scripts/start-prod.mjs defaults it to 30; `npm run demo` and the e2e servers leave it unset, so a
- * rehearsal on the laptop is never reset under the presenter). Floor: 3 seconds, for local checks.
+ * rehearsal on the laptop is never reset under the presenter). Off on Vercel. Floor: 3 seconds.
  */
 export function demoResetMinutes(env: Env): number | null {
-  if (!isDemoMode(env)) return null;
+  // Never on Vercel: every function instance has its own throwaway copy of the demo in /tmp,
+  // seeded at cold start (lib/vercelDemo), so there is nothing shared to reset.
+  if (!isDemoMode(env) || onVercel(env)) return null;
   const n = positive(env.DEMO_RESET_MINUTES);
   return n === null ? null : Math.max(n, 0.05);
 }
