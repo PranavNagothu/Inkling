@@ -4,7 +4,7 @@ import { isAiConfigured } from "@/lib/lecture";
 import UploadLectureForm from "@/components/UploadLectureForm";
 import LiveLectureStart from "@/components/LiveLectureStart";
 import { liveLectureDisabled } from "@/lib/liveLecture";
-import { isDemoMode } from "@/lib/demoMode";
+import { publicUploadMaxMb, publicUploadsEnabled, uploadsAllowed } from "@/lib/demoMode";
 import { BackLink, Mark, PageHeader, TopBar } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Add lecture · Inkling" };
@@ -30,7 +30,11 @@ export default async function NewLecturePage() {
           }
           lede="Upload a recording and, if you have them, its captions. Inkling plays it while you take notes and uses the words to show what was being said at each moment you hesitated."
         />
-        <UploadLectureForm aiConfigured={isAiConfigured()} available={!isDemoMode(process.env)} />
+        <UploadLectureForm
+          aiConfigured={isAiConfigured()}
+          available={uploadsAllowed(process.env)}
+          publicMaxMb={publicUploadsEnabled(process.env) ? publicUploadMaxMb(process.env) : undefined}
+        />
         <section aria-labelledby="live-heading" className="panel flex flex-col gap-3 p-4 sm:p-6">
           <div className="flex flex-col gap-1">
             <p id="live-heading" className="eyebrow">

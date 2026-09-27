@@ -5,14 +5,22 @@ import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { cuesToWords, parseCaptions } from "@/lib/captions";
 import { getDb } from "@/lib/db";
-import { UPLOAD_DEMO_MESSAGE, demoForbidden, isDemoMode } from "@/lib/demoMode";
+import {
+  UPLOAD_DEMO_MESSAGE,
+  demoForbidden,
+  isDemoMode,
+  publicUploadDailyCap,
+  publicUploadMaxMb,
+  publicUploadsEnabled,
+} from "@/lib/demoMode";
 import { sameOriginOnly } from "@/lib/http";
+import { clientIp } from "@/lib/landing/ask/origin";
+import { takePublicUploadSlot } from "@/lib/publicUploads";
 import { listLectures } from "@/lib/lecture";
 import { uploadTarget } from "@/lib/storage";
 import {
   MAX_CAPTIONS_BYTES,
   MAX_MEDIA_BYTES,
-  MAX_UPLOAD_BYTES,
   checkCaptionsFile,
   checkMediaFile,
   parseDurationMs,
@@ -37,16 +45,33 @@ export async function GET() {
  * applies when a proxy is configured, and this app has none), so the limit is enforced here from
  * Content-Length before the body is read.
  *
- * Disabled in DEMO_MODE (403, before the body is read): a public demo never stores uploads.
+ * Disabled in DEMO_MODE (403, before the body is read) unless PUBLIC_UPLOADS is on too; then each
+ * recording is capped at PUBLIC_UPLOAD_MAX_MB and uploads are rate-limited per IP and per day
+ * (lib/publicUploads). The periodic demo reset removes them again (lib/demoReset).
  */
 export const POST = sameOriginOnly(async (request: Request) => {
-  if (isDemoMode(process.env)) return demoForbidden(UPLOAD_DEMO_MESSAGE);
+  const env = process.env;
+  const publicUpload = isDemoMode(env);
+  if (publicUpload && !publicUploadsEnabled(env)) return demoForbidden(UPLOAD_DEMO_MESSAGE);
+  const maxMb = publicUpload ? publicUploadMaxMb(env) : MAX_MEDIA_BYTES / (1024 * 1024);
+  const maxMediaBytes = maxMb * 1024 * 1024;
+  const maxUploadBytes = maxMediaBytes + MAX_CAPTIONS_BYTES + 256 * 1024;
+
   const lengthHeader = request.headers.get("content-length");
   const length = lengthHeader === null ? NaN : Number(lengthHeader);
   if (!Number.isFinite(length) || length < 0) return fail(411, "Content-Length is required.");
-  if (length > MAX_UPLOAD_BYTES) return fail(413, "Upload is too large.");
+  if (length > maxUploadBytes) return fail(413, `Upload is too large (recordings can be at most ${maxMb} MB).`);
   if (!(request.headers.get("content-type") ?? "").toLowerCase().startsWith("multipart/form-data")) {
     return fail(415, "Expected multipart/form-data.");
+  }
+  if (publicUpload) {
+    const slot = takePublicUploadSlot(clientIp(request.headers), publicUploadDailyCap(env));
+    if (!slot.ok) {
+      return Response.json(
+        { error: slot.error },
+        { status: 429, headers: { "retry-after": String(Math.ceil(slot.retryAfterMs / 1000)) } },
+      );
+    }
   }
 
   let form: FormData;
@@ -58,7 +83,7 @@ export const POST = sameOriginOnly(async (request: Request) => {
 
   const media = form.get("media");
   if (!(media instanceof File)) return fail(400, "A media file is required.");
-  if (media.size > MAX_MEDIA_BYTES) return fail(413, "Media files can be at most 300 MB.");
+  if (media.size > maxMediaBytes) return fail(413, `Media files can be at most ${maxMb} MB.`);
   const mediaCheck = checkMediaFile(media);
   if (!mediaCheck.ok) return fail(400, mediaCheck.error);
 

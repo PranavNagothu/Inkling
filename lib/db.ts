@@ -674,6 +674,18 @@ class SqliteDb implements Db {
     return this.readLecture(id)!.lecture;
   }
 
+  async deleteLecture(id: string) {
+    return this.db.transaction(() => {
+      const row = this.db
+        .prepare(`SELECT media_path FROM lectures WHERE id = ? AND transcript_source <> 'demo'`)
+        .get(id) as { media_path: string } | undefined;
+      if (!row) return { deleted: false, mediaPath: null };
+      this.db.prepare(`DELETE FROM concept_labels WHERE lecture_id = ?`).run(id);
+      const res = this.db.prepare(`DELETE FROM lectures WHERE id = ? AND transcript_source <> 'demo'`).run(id);
+      return { deleted: res.changes > 0, mediaPath: res.changes > 0 ? row.media_path : null };
+    })();
+  }
+
   async addNotabilityImport(input: NewNotabilityImport) {
     const id = newId("n_");
     // Strictly increasing within a session so "newest first" is unambiguous.

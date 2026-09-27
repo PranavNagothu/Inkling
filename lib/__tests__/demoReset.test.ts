@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -94,5 +94,50 @@ describe('resetDemo', () => {
     const ids = (await db.listSessions()).map((s) => s.id).sort();
     expect(ids).toEqual(seed.allDemoSessionIds().sort());
     expect(readdirSync(join(dir, 'uploads', 'notability'))).toHaveLength(1);
+  }, 60_000);
+
+  it('removes old visitor-uploaded lectures, their sessions and files, but never the demo lecture', async () => {
+    const { uploadTarget } = await import('../storage');
+    const { storedFileName } = await import('../upload');
+    const addUpload = async (title: string) => {
+      const { abs, rel } = uploadTarget(storedFileName('.wav'));
+      writeFileSync(abs, 'RIFF....WAVE');
+      const lecture = await db.createLecture({
+        title,
+        courseId: 'general',
+        mediaPath: rel,
+        mediaType: 'audio',
+        mime: 'audio/wav',
+        durationMs: 2000,
+        words: [],
+        transcriptSource: 'none',
+      });
+      return { lecture, abs };
+    };
+    const old = await addUpload('Old upload');
+    // A session on the old upload, itself brand new: it goes with its lecture.
+    await db.createSession({ id: 'visitor-on-upload', title: 'Notes', lectureId: old.lecture.id, courseId: 'general' });
+
+    // Two hours later: the upload is older than the default 60 minutes.
+    const later = new Date(Date.now() + 2 * HOUR);
+    const young = await addUpload('Young upload');
+    const result = await reset.resetDemo({ DEMO_MODE: '1', DEMO_KEEP_VISITOR_MINUTES: '180' }, later);
+    expect(result.lectures).toBe(0);
+    expect(existsSync(old.abs)).toBe(true);
+
+    const result2 = await reset.resetDemo({ DEMO_MODE: '1' }, later);
+    expect(result2.lectures).toBe(2);
+    expect(await db.getLecture(old.lecture.id)).toBeNull();
+    expect(await db.getLecture(young.lecture.id)).toBeNull();
+    expect(await db.getSession('visitor-on-upload')).toBeNull();
+    expect(existsSync(old.abs)).toBe(false);
+    expect(existsSync(young.abs)).toBe(false);
+
+    // The demo lecture and Maya's sessions are untouched, and the demo lecture can't be deleted.
+    expect((await db.getLecture(DEMO_LECTURE.lectureId))?.lecture.transcriptSource).toBe('demo');
+    const ids = (await db.listSessions()).map((s) => s.id).sort();
+    expect(ids).toEqual(seed.allDemoSessionIds().sort());
+    expect(await db.deleteLecture(DEMO_LECTURE.lectureId)).toEqual({ deleted: false, mediaPath: null });
+    expect(await db.getLecture(DEMO_LECTURE.lectureId)).not.toBeNull();
   }, 60_000);
 });

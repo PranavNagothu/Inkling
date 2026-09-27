@@ -151,6 +151,12 @@ export interface Db {
    * their value. Returns null for an unknown lecture.
    */
   setLectureMedia(id: string, patch: LectureMediaPatch): Promise<Lecture | null>;
+  /**
+   * Deletes a lecture row and its concept labels (never the bundled demo lecture). Sessions on it
+   * are the caller's job (deleteSession, for their files). Returns the stored media path so the
+   * caller can remove the file. Demo reset only.
+   */
+  deleteLecture(id: string): Promise<{ deleted: boolean; mediaPath: string | null }>;
 
   /** Stores a Notability PDF import as the session's current one (earlier imports stay as history). */
   addNotabilityImport(input: NewNotabilityImport): Promise<NotabilityImport>;

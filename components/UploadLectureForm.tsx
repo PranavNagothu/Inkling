@@ -16,7 +16,7 @@ import {
 import { formatClock } from "./LecturePlayer";
 import { CaptionsIcon, CheckIcon, WaveIcon } from "./icons";
 import { btnPrimary, btnSecondary } from "./ui";
-import { UPLOAD_DEMO_MESSAGE } from "@/lib/demoMode";
+import { UPLOAD_DEMO_MESSAGE, publicUploadNote } from "@/lib/demoMode";
 
 function formatBytes(n: number): string {
   if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
@@ -144,9 +144,19 @@ function FileZone({
 
 /**
  * `available` is false in DEMO_MODE (a public demo stores no uploads): the form is shown disabled,
- * with a note, and the server refuses the upload anyway (403).
+ * with a note, and the server refuses the upload anyway (403). `publicMaxMb` is set when the public
+ * demo accepts visitor uploads (DEMO_MODE + PUBLIC_UPLOADS): the form is enabled with that cap and a
+ * note that uploads are removed again.
  */
-export default function UploadLectureForm({ aiConfigured, available = true }: { aiConfigured: boolean; available?: boolean }) {
+export default function UploadLectureForm({
+  aiConfigured,
+  available = true,
+  publicMaxMb,
+}: {
+  aiConfigured: boolean;
+  available?: boolean;
+  publicMaxMb?: number;
+}) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [media, setMedia] = useState<MediaState>({ status: "empty" });
@@ -163,6 +173,10 @@ export default function UploadLectureForm({ aiConfigured, available = true }: { 
     const token = ++readToken.current;
     if (!check.ok) {
       setMedia({ status: "error", file, error: check.error });
+      return;
+    }
+    if (publicMaxMb !== undefined && file.size > publicMaxMb * 1024 * 1024) {
+      setMedia({ status: "error", file, error: `On the public demo, recordings can be at most ${publicMaxMb} MB.` });
       return;
     }
     if (!titleEdited.current) setTitle(titleFromFileName(file.name));
@@ -272,11 +286,11 @@ export default function UploadLectureForm({ aiConfigured, available = true }: { 
       data-testid="upload-form"
       className="panel flex flex-col gap-6 p-4 sm:p-6"
       noValidate
-      aria-describedby={available ? undefined : "upload-demo-note"}
+      aria-describedby={available && publicMaxMb === undefined ? undefined : "upload-demo-note"}
     >
-      {available ? null : (
+      {available && publicMaxMb === undefined ? null : (
         <p id="upload-demo-note" data-testid="upload-demo-note" className="rounded-md bg-chrome px-3.5 py-2.5 text-sm text-pretty text-ink-muted">
-          {UPLOAD_DEMO_MESSAGE}
+          {available && publicMaxMb !== undefined ? publicUploadNote(publicMaxMb) : UPLOAD_DEMO_MESSAGE}
         </p>
       )}
       <fieldset disabled={!available} className="m-0 flex min-w-0 flex-col gap-6 border-0 p-0 disabled:opacity-60">
@@ -302,7 +316,7 @@ export default function UploadLectureForm({ aiConfigured, available = true }: { 
         <span className="text-sm font-medium text-ink">Recording</span>
         <FileZone
           label="Choose audio or video"
-          hint="MP3, M4A, WAV, WebM or MP4 · up to 300 MB"
+          hint={`MP3, M4A, WAV, WebM or MP4 · up to ${publicMaxMb ?? 300} MB`}
           accept={MEDIA_ACCEPT}
           testId="media-input"
           icon={<WaveIcon size={20} />}
@@ -332,7 +346,7 @@ export default function UploadLectureForm({ aiConfigured, available = true }: { 
           Captions become the transcript you can follow while taking notes. Without them the lecture still works, but
           moments won’t show what was said and pauses in your writing aren’t scored.
         </p>
-        {!aiConfigured && available ? (
+        {!aiConfigured && available && publicMaxMb === undefined ? (
           <p data-testid="upload-ai-note" className="px-1 text-xs text-ink-subtle">
             Auto-transcribe needs an OpenAI or Groq key
           </p>

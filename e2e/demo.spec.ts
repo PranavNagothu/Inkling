@@ -177,3 +177,16 @@ test("the health check and home page answer on the demo server", async ({ reques
   expect(home.status()).toBe(200);
   expect(await home.text()).toContain("Maya — Session 1");
 });
+
+// The demo server runs without PUBLIC_UPLOADS: adding a lecture stays off, in the UI and the API.
+// (With PUBLIC_UPLOADS=1 the same form is enabled; that path is covered by lib/__tests__/publicUploads.)
+test("adding a lecture stays disabled on the demo without PUBLIC_UPLOADS", async ({ page, request }) => {
+  await page.goto("/lectures/new");
+  await expect(page.getByTestId("upload-demo-note")).toHaveText("Adding a lecture is available when you run Inkling yourself.");
+  await expect(page.getByTestId("upload-submit")).toBeDisabled();
+  const res = await request.post("/api/lectures", {
+    headers: { origin: "http://127.0.0.1:3101" },
+    multipart: { title: "x", durationMs: "1000", media: { name: "a.wav", mimeType: "audio/wav", buffer: Buffer.from("RIFF0000WAVE") } },
+  });
+  expect(res.status()).toBe(403);
+});

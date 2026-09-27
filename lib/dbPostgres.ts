@@ -1126,6 +1126,19 @@ export class PostgresDb implements Db {
     return (await this.getLecture(id))!.lecture;
   }
 
+  async deleteLecture(id: string) {
+    return this.transaction(async () => {
+      const row = await this.one<{ media_path: string }>(
+        `SELECT media_path FROM lectures WHERE id = $1 AND transcript_source <> 'demo' FOR UPDATE`,
+        [id],
+      );
+      if (!row) return { deleted: false, mediaPath: null };
+      await this.run(`DELETE FROM concept_labels WHERE lecture_id = $1`, [id]);
+      const deleted = await this.run(`DELETE FROM lectures WHERE id = $1 AND transcript_source <> 'demo'`, [id]);
+      return { deleted: deleted > 0, mediaPath: deleted > 0 ? row.media_path : null };
+    });
+  }
+
   async addNotabilityImport(input: NewNotabilityImport) {
     const id = newId("n_");
     return this.transaction(async () => {

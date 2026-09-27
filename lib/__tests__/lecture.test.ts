@@ -94,6 +94,26 @@ describe('lectures table', () => {
     expect(await db.setLectureTranscript('nope', WORDS, 'whisper')).toBeNull();
     expect(await lectures.getLecture('nope')).toBeNull();
   });
+
+  it('deletes an uploaded lecture (returning its media path) but never the demo lecture', async () => {
+    const l = await db.createLecture({
+      title: 'Temporary',
+      courseId: 'general',
+      mediaPath: 'data/uploads/tmp.wav',
+      mediaType: 'audio',
+      mime: 'audio/wav',
+      durationMs: 1000,
+      words: [],
+      transcriptSource: 'none',
+    });
+    await db.setConceptLabel(l.id, `${l.id}@0`, 'Temporary concept');
+    expect(await db.deleteLecture(l.id)).toEqual({ deleted: true, mediaPath: 'data/uploads/tmp.wav' });
+    expect(await lectures.getLecture(l.id)).toBeNull();
+    expect((await db.getConceptLabels(l.id)).size).toBe(0);
+    expect(await db.deleteLecture(l.id)).toEqual({ deleted: false, mediaPath: null });
+    expect(await db.deleteLecture('demo-chain-rule')).toEqual({ deleted: false, mediaPath: null });
+    expect(await lectures.getLecture('demo-chain-rule')).not.toBeNull();
+  });
 });
 
 describe('analysis uses the session’s lecture', () => {
