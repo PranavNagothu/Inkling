@@ -109,12 +109,12 @@ function FileZone({
           ? "border-accent bg-accent-soft"
           : invalid
             ? "border-danger/50 bg-paper"
-            : "border-line-strong bg-paper hover:border-ink-subtle hover:bg-chrome"
+            : "border-line-strong bg-white/70 hover:border-accent/60 hover:bg-white"
       }`}
     >
       <span
         aria-hidden="true"
-        className="inline-flex size-10 shrink-0 items-center justify-center rounded-md border border-line bg-chrome text-ink-muted shadow-hairline"
+        className="inline-flex size-10 shrink-0 items-center justify-center rounded-md border border-teal-200 bg-accent-soft text-accent-press"
       >
         {icon}
       </span>
@@ -204,7 +204,7 @@ export default function UploadLectureForm({ aiConfigured }: { aiConfigured: bool
       const body = (xhr.response ?? {}) as { lecture?: Lecture; error?: string };
       if (xhr.status === 201 && body.lecture) {
         setProgress(1);
-        router.push(`/?lecture=${encodeURIComponent(body.lecture.id)}`);
+        router.push(`/app?lecture=${encodeURIComponent(body.lecture.id)}`);
         return;
       }
       setProgress(null);
@@ -265,7 +265,7 @@ export default function UploadLectureForm({ aiConfigured }: { aiConfigured: bool
     <form
       onSubmit={submit}
       data-testid="upload-form"
-      className="flex flex-col gap-6 rounded-lg border border-line bg-chrome p-4 shadow-hairline sm:p-6"
+      className="panel flex flex-col gap-6 p-4 sm:p-6"
       noValidate
     >
       <div className="flex flex-col gap-1.5">
@@ -282,7 +282,7 @@ export default function UploadLectureForm({ aiConfigured }: { aiConfigured: bool
             titleEdited.current = true;
             setTitle(e.target.value);
           }}
-          className="min-h-11 rounded-md border border-line-strong bg-paper px-3.5 text-[15px] text-ink shadow-hairline placeholder:text-ink-subtle/80 hover:border-ink-subtle"
+          className="min-h-11 rounded-md border border-line-strong bg-white px-3.5 text-[15px] text-ink shadow-[0_1px_2px_rgb(15_23_42/0.04)] transition-colors placeholder:text-ink-subtle/80 hover:border-accent/60"
         />
       </div>
 
@@ -347,7 +347,7 @@ export default function UploadLectureForm({ aiConfigured }: { aiConfigured: bool
             </span>
           </div>
         ) : null}
-        <Link href="/" className={btnSecondary}>
+        <Link href="/app" className={btnSecondary}>
           Cancel
         </Link>
         <button type="submit" data-testid="upload-submit" disabled={!canSubmit} aria-busy={uploading} className={btnPrimary}>

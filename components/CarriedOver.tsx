@@ -7,7 +7,7 @@ import { MomentGlyph } from "./Timeline";
 import { CheckIcon } from "./icons";
 
 const STATE: Record<CarriedThread["here"], { text: string; className: string }> = {
-  resolved: { text: "Resolved this session", className: "bg-breakthrough-soft text-breakthrough-strong" },
+  resolved: { text: "Resolved this session", className: "bg-ok-soft text-ok-strong" },
   repeated: { text: "Came up again", className: "bg-gap-soft text-gap-strong" },
   open: { text: "Still open", className: "bg-chrome-press text-ink-muted" },
 };
@@ -18,7 +18,7 @@ export default function CarriedOver({ threads, sessionId }: { threads: CarriedTh
   return (
     <section data-testid="carried-over" aria-labelledby="carried-heading" className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h2 id="carried-heading" className="text-xs font-medium tracking-wide text-ink-subtle uppercase">
+        <h2 id="carried-heading" className="text-xs font-bold tracking-wide text-ink-muted uppercase">
           Carried over
         </h2>
         <p className="text-xs text-ink-muted tabular-nums">
@@ -41,7 +41,7 @@ export default function CarriedOver({ threads, sessionId }: { threads: CarriedTh
                 className="press group flex min-h-11 max-w-full items-center gap-2 rounded-pill border border-line bg-chrome py-1 pr-1.5 pl-3 text-sm shadow-hairline hover:bg-chrome-hover"
               >
                 {t.here === "resolved" ? (
-                  <CheckIcon size={14} className="shrink-0 text-breakthrough-strong" />
+                  <CheckIcon size={14} className="shrink-0 text-ok-strong" />
                 ) : (
                   <MomentGlyph type="unresolved_gap" size={12} className="shrink-0" />
                 )}

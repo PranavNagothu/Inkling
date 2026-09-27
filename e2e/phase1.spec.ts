@@ -18,22 +18,22 @@ async function drawLine(page: Page, x0: number, y: number, x1: number) {
   await page.mouse.up();
 }
 
-/** Counts strongly red pixels (ghost ink) on a canvas. */
-async function redPixelCount(page: Page, testId: string) {
+/** Counts teal ghost-ink pixels (#0d9488 at 40 %; never ink, never the sky-blue moment outline) on a canvas. */
+async function ghostPixelCount(page: Page, testId: string) {
   return page.getByTestId(testId).evaluate((el) => {
     const c = el as HTMLCanvasElement;
     const data = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
     let n = 0;
     for (let i = 0; i < data.length; i += 4) {
       const [r, g, b, a] = [data[i], data[i + 1], data[i + 2], data[i + 3]];
-      if (a > 20 && r > 150 && g < 120 && b < 120) n++;
+      if (a > 20 && r < 100 && g > 110 && b < g + 8 && g - r > 60) n++;
     }
     return n;
   });
 }
 
 test("home page shows title and tagline", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await expect(page.getByRole("heading", { name: "Inkling" })).toBeVisible();
   await expect(page.getByTestId("tagline")).toHaveText("Every other app deletes your mistakes. We keep them.");
   await expect(page.getByTestId("new-session")).toBeVisible();
@@ -41,7 +41,7 @@ test("home page shows title and tagline", async ({ page }) => {
 
 test("full capture → erase → save → review flow persists ghost ink", async ({ page, request }) => {
   // 1. New session
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByTestId("new-session").click();
   await page.waitForURL(/\/session\/[^/]+$/);
   const sessionId = page.url().split("/session/")[1];
@@ -80,10 +80,10 @@ test("full capture → erase → save → review flow persists ghost ink", async
   await expect(canvas).toHaveAttribute("data-erased-count", "1");
 
   // Ghost toggle on the capture page shows erased ink in red
-  expect(await redPixelCount(page, "ink-canvas")).toBe(0);
+  expect(await ghostPixelCount(page, "ink-canvas")).toBe(0);
   await page.getByTestId("ghost-toggle").check();
   await expect(canvas).toHaveAttribute("data-ghost", "on");
-  expect(await redPixelCount(page, "ink-canvas")).toBeGreaterThan(20);
+  expect(await ghostPixelCount(page, "ink-canvas")).toBeGreaterThan(20);
   await page.getByTestId("ghost-toggle").uncheck();
   await page.getByTestId("tool-pen").click();
 
@@ -143,14 +143,14 @@ test("full capture → erase → save → review flow persists ghost ink", async
   const review = page.getByTestId("review-canvas");
   await expect(review).toHaveAttribute("data-stroke-count", "5");
   await expect(review).toHaveAttribute("data-ghost", "on");
-  await expect.poll(() => redPixelCount(page, "review-canvas")).toBeGreaterThan(20);
+  await expect.poll(() => ghostPixelCount(page, "review-canvas")).toBeGreaterThan(20);
   await page.getByTestId("ghost-toggle").uncheck();
   await expect(review).toHaveAttribute("data-ghost", "off");
-  await expect.poll(() => redPixelCount(page, "review-canvas")).toBe(0);
+  await expect.poll(() => ghostPixelCount(page, "review-canvas")).toBe(0);
 });
 
 test("undo marks the last stroke erased with erasedBy=undo", async ({ page, request }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByTestId("new-session").click();
   await page.waitForURL(/\/session\/[^/]+$/);
   const sessionId = page.url().split("/session/")[1];

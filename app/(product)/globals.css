@@ -1,0 +1,417 @@
+@import "tailwindcss";
+
+/*
+ * Inkling app design tokens — the same "Notability paper" language as the marketing page
+ * (/welcome): off-white paper, white translucent panels with hairline borders and soft shadows,
+ * near-black ink, teal as the one accent. Token names are shared with the landing page so the two
+ * read as one product.
+ *
+ * No WebGL anywhere in the app: the ink canvas owns the GPU (and the iPad's battery). The pearl
+ * metal look on primary buttons and the home page background are plain CSS gradients.
+ *
+ * Contrast (WCAG AA on white and on the desk): ink #0f172a, ink-muted #475569 and ink-subtle
+ * #526176 ≥ 4.5:1; accent text #0f766e 5.5:1; moment "strong" text colours ≥ 7:1 on their soft
+ * tints. Moment markers (non-text) ≥ 3:1 against white and are also shape-coded.
+ */
+@theme {
+  /* Surfaces */
+  --color-desk: #fbfbf8; /* app background behind everything */
+  --color-chrome: #ffffff; /* toolbars, panels, lists */
+  --color-chrome-hover: #f4f6f8;
+  --color-chrome-press: #eef2f4;
+  --color-paper: #fffffd; /* the notebook page */
+  --color-rule: #dbe5ee; /* ruled lines on paper */
+  --color-line: #e2e8f0; /* hairline borders */
+  --color-line-strong: #cbd5e1;
+
+  /* Ink (text) */
+  --color-ink: #0f172a;
+  --color-ink-muted: #475569;
+  --color-ink-subtle: #526176;
+
+  /* Primary action / links — teal (text-safe shade: 5.5:1 on white) */
+  --color-accent: #0f766e;
+  --color-accent-hover: #115e59;
+  --color-accent-press: #134e4a;
+  --color-accent-strong: #0f766e;
+  --color-accent-soft: #e7f7f4;
+  --color-on-accent: #ffffff;
+
+  /* Ghost ink — teal, dashed, lighter than ink (as on the landing page) */
+  --color-ghost: #0d9488;
+  --color-ghost-strong: #0f766e; /* text-safe */
+  --color-ghost-soft: #effaf8;
+
+  /* Status */
+  --color-ok: #15803d; /* resolved / correct / saved — ≥ 5:1 on white */
+  --color-ok-strong: #166534;
+  --color-ok-soft: #ecfdf3;
+  --color-danger: #b42318;
+
+  /* Learning-timeline moments (marker fill / text-safe / soft tint), matching the landing chips:
+     corrected = cyan-blue (filled dot), unresolved gap = amber (open ring), breakthrough = slate
+     ink (diamond). Corrected leans blue (sky) so it never reads as the teal ghost ink it sits on. */
+  --color-corrected: #0284c7;
+  --color-corrected-strong: #075985;
+  --color-corrected-soft: #f0f9ff;
+  --color-gap: #d97706;
+  --color-gap-strong: #92400e;
+  --color-gap-soft: #fffbeb;
+  --color-breakthrough: #1e293b;
+  --color-breakthrough-strong: #0f172a;
+  --color-breakthrough-soft: #f1f5f9;
+
+  /* Type */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* Elevation — hairline borders separate, soft shadows lift */
+  --shadow-hairline: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -14px rgb(15 23 42 / 0.14);
+  --shadow-raised: 0 1px 2px rgb(15 23 42 / 0.06), 0 2px 8px -2px rgb(15 23 42 / 0.08);
+  --shadow-page: 0 1px 2px rgb(15 23 42 / 0.04), 0 18px 48px -20px rgb(15 23 42 / 0.18);
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -14px rgb(15 23 42 / 0.14);
+  --shadow-lift: 0 2px 4px rgb(15 23 42 / 0.05), 0 24px 56px -24px rgb(13 148 136 / 0.35);
+
+  /* Motion */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  /* Layout tokens (not utilities) */
+  --toolbar-h: 64px;
+  --tape-h: 48px;
+  --tap: 44px; /* minimum touch target */
+  --rule-gap: 32px; /* ruled-line spacing */
+  --focus-ring: 0 0 0 2px #fff, 0 0 0 4px var(--color-accent);
+  color-scheme: light;
+}
+
+/*
+ * html paints the page: the desk with a very faint static teal/pearl wash (no animation, no
+ * repaint). body stays transparent so the home page's fixed pearl layer (z-index -1) shows through.
+ */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  background-color: var(--color-desk);
+  background-image:
+    radial-gradient(1200px 600px at 8% -10%, rgb(204 251 241 / 0.4), transparent 60%),
+    radial-gradient(900px 500px at 105% 0%, rgb(236 254 255 / 0.55), transparent 60%);
+  background-repeat: no-repeat;
+}
+
+body {
+  background: transparent;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: clip;
+}
+
+/* Everything clickable shows the hand (Tailwind v4 resets buttons to the default cursor)… */
+:where(a[href], button:not(:disabled), summary, label[for], label:has(> input), select:not(:disabled), [role="button"], [role="radio"], [role="tab"], [role="switch"]) {
+  cursor: pointer;
+}
+:where(button:disabled, select:disabled, input:disabled) {
+  cursor: not-allowed;
+}
+/* …and a quick press gives tactile feedback (opt out with data-no-press, e.g. drag handles). */
+:where(button:not(:disabled):not([data-no-press]), [role="button"]:not([data-no-press]), a.btn-metal, a.btn-quiet) {
+  -webkit-tap-highlight-color: transparent;
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: 160ms;
+  transition-timing-function: var(--ease-out-soft);
+}
+:where(button:not(:disabled):not([data-no-press]), [role="button"]:not([data-no-press]), a.btn-metal, a.btn-quiet):active {
+  transform: scale(0.97);
+}
+
+/* One consistent, visible focus ring for keyboard users. */
+:where(a, button, input, select, textarea, summary, video, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+::selection {
+  background: rgb(45 212 191 / 0.3);
+  color: var(--color-ink);
+}
+
+/*
+ * Home only: the landing page's pearl surface as a CSS gradient (the WebGL LiquidMetal's CSS path)
+ * under a white veil. A fixed, oversized layer drifts very slowly with a transform, so it stays on
+ * the compositor (no repaints); static under reduced motion.
+ */
+.pearl-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: #f4f7f8;
+}
+.pearl-bg::before {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  /* Soft pearl pools (radials only: a conic's centre point would show as a seam). */
+  background-image:
+    radial-gradient(38% 42% at 22% 18%, rgb(255 255 255 / 0.95), transparent 70%),
+    radial-gradient(34% 40% at 72% 30%, rgb(215 239 235 / 0.9), transparent 70%),
+    radial-gradient(40% 36% at 38% 72%, rgb(227 243 240 / 0.85), transparent 70%),
+    radial-gradient(30% 34% at 85% 78%, rgb(233 238 241 / 0.9), transparent 70%),
+    radial-gradient(28% 30% at 55% 50%, rgb(247 249 250 / 0.9), transparent 70%),
+    linear-gradient(160deg, #eef2f4, #f7f9fa 45%, #e3f3f0);
+  animation: pearl-drift 60s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.pearl-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgb(255 255 255 / 0.35);
+}
+@keyframes pearl-drift {
+  from {
+    transform: translate3d(-3%, -2%, 0) rotate(0deg) scale(1);
+  }
+  to {
+    transform: translate3d(3%, 2%, 0) rotate(8deg) scale(1.06);
+  }
+}
+
+@layer components {
+  /* Translucent white panel: hairline border + soft shadow (as .card/.panel on the landing page). */
+  .panel {
+    border: 1px solid rgb(226 232 240 / 0.9);
+    background: rgb(255 255 255 / 0.92);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Bold highlighted pill label above sections (the landing page's eyebrow, app-sized). */
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    align-self: flex-start;
+    padding: 0.3rem 0.8rem 0.3rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid rgb(94 234 212 / 0.7);
+    background: linear-gradient(100deg, rgb(204 251 241 / 0.95), rgb(240 253 250 / 0.9));
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.06),
+      0 4px 14px -6px rgb(13 148 136 / 0.35);
+    font-size: 0.75rem;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #134e4a;
+    white-space: nowrap;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 0.45rem;
+    height: 0.45rem;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: #0d9488;
+    box-shadow: 0 0 0 3px rgb(13 148 136 / 0.18);
+  }
+
+  /* Page titles: bold, tight, balanced (the landing page's section titles, app-sized). */
+  .page-title {
+    font-size: 2rem;
+    line-height: 1.08;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+    color: var(--color-ink);
+  }
+  @media (min-width: 640px) {
+    .page-title {
+      font-size: 2.5rem;
+    }
+  }
+
+  /*
+   * Primary action: the landing page's pearl-teal metal pill, CSS path only (a conic gradient, no
+   * WebGL). The sheen slides across on hover — a one-off transition, not a running animation.
+   */
+  .btn-metal {
+    position: relative;
+    isolation: isolate;
+    color: #042f2e;
+    background-color: #ccfbf1;
+    background-image:
+      radial-gradient(70% 90% at 25% 15%, rgb(255 255 255 / 0.9), transparent 60%),
+      conic-gradient(from 210deg at 50% 50%, #ccfbf1, #f0fdfa, #99f6e4, #ecfeff, #a7f3d0, #f0fdfa, #ccfbf1);
+    background-size: 220% 220%;
+    background-position: 0% 50%;
+    background-repeat: no-repeat;
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.7) inset,
+      0 0 0 1px rgb(15 118 110 / 0.28),
+      0 10px 24px -12px rgb(13 148 136 / 0.75);
+    transition-property: background-position, box-shadow, transform, opacity;
+    transition-duration: 600ms, 200ms, 160ms, 160ms;
+    transition-timing-function: var(--ease-out-soft);
+  }
+  @media (hover: hover) {
+    .btn-metal:hover:not(:disabled) {
+      background-position: 100% 50%;
+      box-shadow:
+        0 1px 0 rgb(255 255 255 / 0.7) inset,
+        0 0 0 1px rgb(15 118 110 / 0.42),
+        0 16px 32px -12px rgb(13 148 136 / 0.85);
+    }
+  }
+  .btn-metal:focus-visible {
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.7) inset,
+      var(--focus-ring);
+  }
+
+  /* Secondary pill: white, hairline border, teal on hover. */
+  .btn-quiet {
+    background: rgb(255 255 255 / 0.9);
+    color: var(--color-ink);
+    border: 1px solid var(--color-line-strong);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+  }
+  @media (hover: hover) {
+    .btn-quiet:hover:not(:disabled) {
+      background: #fff;
+      border-color: var(--color-accent);
+      color: var(--color-accent-press);
+    }
+  }
+  .btn-quiet:active:not(:disabled) {
+    background: var(--color-chrome-press);
+  }
+}
+
+/* Notebook paper behind the ink canvas: a clean page with faint ruled lines. */
+.paper {
+  background-color: var(--color-paper);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--rule-gap) - 1px),
+    var(--color-rule) calc(var(--rule-gap) - 1px),
+    var(--color-rule) var(--rule-gap)
+  );
+  background-position: 0 calc(var(--rule-gap) * 1.5);
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Ghost-ink switch: a native checkbox styled as a track + knob (keeps check()/uncheck() semantics). */
+.ghost-switch {
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  width: 36px;
+  height: 22px;
+  margin: 0;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-line-strong);
+  background-image: radial-gradient(circle at center, #fff 0 8px, transparent 8.5px);
+  background-size: 22px 22px;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  box-shadow: inset 0 0 0 1px rgb(15 23 42 / 0.06);
+  cursor: pointer;
+  transition-property: background-color, background-position;
+  transition-duration: 160ms;
+  transition-timing-function: var(--ease-out-soft);
+}
+.ghost-switch:checked {
+  background-color: var(--color-accent);
+  background-position: 14px 0;
+}
+
+/* Tactile press for buttons, without layout movement. */
+.press {
+  transition-property: background-color, color, border-color, box-shadow, transform;
+  transition-duration: 140ms;
+  transition-timing-function: var(--ease-out-soft);
+}
+.press:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Quiet entrance for panels that appear on selection (opacity + small rise). */
+@keyframes enter-soft {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.enter-soft {
+  animation: enter-soft 180ms var(--ease-out-soft) both;
+}
+
+/* Transcript: words are click-to-seek; the word being spoken is marked with aria-current. */
+.transcript-word {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 1px;
+  margin: 0 -1px;
+  transition-property: background-color, color, box-shadow;
+  transition-duration: 120ms;
+  transition-timing-function: var(--ease-out-soft);
+}
+@media (hover: hover) {
+  .transcript-word:hover {
+    background-color: var(--color-chrome-press);
+    color: var(--color-ink);
+  }
+}
+.transcript-word[aria-current="true"] {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent-press);
+  box-shadow: 0 0 0 1px rgb(15 118 110 / 0.2);
+}
+.excerpt-word {
+  border-radius: 3px;
+  transition-property: background-color, color;
+  transition-duration: 120ms;
+  transition-timing-function: var(--ease-out-soft);
+}
+.excerpt-word[aria-current="true"] {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent-press);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  .press:active:not(:disabled),
+  :where(button, [role="button"], a.btn-metal, a.btn-quiet):active {
+    transform: none;
+  }
+  .pearl-bg::before {
+    animation: none;
+  }
+}

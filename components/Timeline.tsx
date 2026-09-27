@@ -22,7 +22,7 @@ const GUIDE_CLASS: Record<TimelineEventType, string> = {
 
 /**
  * Shape + colour coded so a moment never relies on colour alone:
- * corrected = filled amber dot, unresolved gap = open red ring, breakthrough = green diamond.
+ * corrected = filled cyan-blue dot, unresolved gap = open amber ring, breakthrough = slate-ink diamond.
  */
 export function MomentGlyph({ type, size = 14, className = "" }: { type: TimelineEventType; size?: number; className?: string }) {
   return (
@@ -93,7 +93,7 @@ export default function Timeline({
   return (
     <section aria-labelledby="timeline-heading" className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        <h2 id="timeline-heading" className="text-xs font-medium tracking-wide text-ink-subtle uppercase">
+        <h2 id="timeline-heading" className="eyebrow">
           Learning timeline
         </h2>
         <ul aria-label="Legend" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
@@ -130,7 +130,7 @@ export default function Timeline({
                 left: `${pct(zone.startMs)}%`,
                 width: `${pct(zone.endMs) - pct(zone.startMs)}%`,
                 backgroundImage:
-                  "repeating-linear-gradient(135deg, transparent 0 6px, rgb(28 26 23 / 0.035) 6px 7px)",
+                  "repeating-linear-gradient(135deg, transparent 0 6px, rgb(15 23 42 / 0.035) 6px 7px)",
               }}
             >
               {i === 0 ? (

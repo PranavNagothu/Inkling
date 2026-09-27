@@ -4,7 +4,8 @@ import "server-only";
 // cleaned, capped, and only ever sent as a quoted JSON string inside a data tag that it cannot
 // close. The rules (and the output schema) live in the system message alone, and the API call
 // pins the schema, so nothing in the data can change what shape comes back.
-import type { HelpContext, RevisionInput } from './types';
+import { languageInfo, type LanguageCode } from './languages';
+import type { HelpCardCore, HelpContext, RevisionInput } from './types';
 
 export type ChatPart = { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string; detail: 'low' } };
 
@@ -149,6 +150,66 @@ export function buildLabelMessages(segmentText: string, opts: { repair?: string 
   ];
 }
 
+const MATH_RULES =
+  'Keep all math notation exactly as written, character for character: expressions such as ' +
+  "f'(g(x)), x^2, 3(2x + 5)^2, dy/dx, e^(5x), sin(x^2) and 1/(x^2 + 4) stay as they are (same ASCII, " +
+  'same digits, no Unicode superscripts, no LaTeX, and function names like sin, cos, ln and e are not translated).';
+
+/**
+ * Rewrites a finished English help card in another language. The options must stay in their
+ * positions: the stored English card's answerIdx grades the translated question, and the model is
+ * never told which option is correct (it doesn't need to be, and nothing it says can change it).
+ */
+export function buildLocalizeHelpMessages(card: HelpCardCore, language: LanguageCode, opts: { repair?: string } = {}): ChatMessage[] {
+  const lang = languageInfo(language).name;
+  const system = [
+    `You help a university student who learns best in ${lang}. Rewrite a tutor's help card in ${lang}.`,
+    `Write every field in natural, simple, friendly ${lang} (second person), keeping the meaning exactly. Plain text, no markdown.`,
+    MATH_RULES,
+    `"reexplain": the re-explanation in ${lang} (at most about 100 words).`,
+    `"mcq.q": the check question in ${lang}.`,
+    `"mcq.options": exactly 4 options in the same order as given: option 1 of your answer says what option 1 says, and so on. Never reorder, merge, drop or add options.`,
+    `"mcq.why": the explanation in ${lang}.`,
+    DATA_RULES,
+  ].join('\n');
+  const q = (tag: string, v: string, max: number) => quoteData(tag, cleanUntrusted(v, max));
+  const parts: ChatPart[] = [
+    {
+      type: 'text',
+      text: [
+        `Target language: ${lang}.`,
+        `Re-explanation: ${q('reexplain', card.reexplain, 1200)}`,
+        `Question: ${q('question', card.mcq.q, 600)}`,
+        ...card.mcq.options.map((o, i) => `Option ${i + 1}: ${q(`option_${i + 1}`, o, 400)}`),
+        `Why: ${q('why', card.mcq.why, 800)}`,
+      ].join('\n'),
+    },
+    ...repairNote(opts.repair),
+  ];
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: parts },
+  ];
+}
+
+/** A spoken study recap (built by lib/recap from counts and labels), rewritten in `language`. */
+export function buildRecapMessages(text: string, language: LanguageCode, opts: { repair?: string } = {}): ChatMessage[] {
+  const lang = languageInfo(language).name;
+  const system = [
+    `Rewrite a short spoken study recap in ${lang} for the student it describes.`,
+    `"recap": at most 90 words of warm, encouraging, natural ${lang} meant to be read aloud: plain sentences, no lists, no markdown, no emoji.`,
+    'Keep every number and fact; translate topic names so a student would understand them, and keep any math notation as written.',
+    DATA_RULES,
+  ].join('\n');
+  return [
+    { role: 'system', content: system },
+    {
+      role: 'user',
+      content: [{ type: 'text', text: `Recap: ${quoteData('recap', cleanUntrusted(text, 1200))}` }, ...repairNote(opts.repair)],
+    },
+  ];
+}
+
 // Strict structured-output schemas: every property required, no additional properties. Limits
 // that providers' schema dialects don't all support (word counts, array length) are enforced by
 // ./validate instead.
@@ -185,4 +246,28 @@ export const REVISION_SCHEMA: JsonSchemaSpec = {
 export const LABEL_SCHEMA: JsonSchemaSpec = {
   name: 'concept_label',
   schema: { type: 'object', additionalProperties: false, required: ['label'], properties: { label: str } },
+};
+
+/** A translated card: no answerIdx (the source card's is kept; see buildLocalizeHelpMessages). */
+export const LOCALIZE_HELP_SCHEMA: JsonSchemaSpec = {
+  name: 'localized_help_card',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['reexplain', 'mcq'],
+    properties: {
+      reexplain: str,
+      mcq: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['q', 'options', 'why'],
+        properties: { q: str, options: { type: 'array', items: str }, why: str },
+      },
+    },
+  },
+};
+
+export const RECAP_SCHEMA: JsonSchemaSpec = {
+  name: 'session_recap',
+  schema: { type: 'object', additionalProperties: false, required: ['recap'], properties: { recap: str } },
 };

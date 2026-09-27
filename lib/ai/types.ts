@@ -2,6 +2,7 @@
 // validated, size-limited results; everything else (caching, limits, persistence) lives in
 // ./service. Types only.
 import type { HelpCard, RevisionReading, TimelineEventType } from '../types';
+import type { LanguageCode } from './languages';
 
 export type ProviderName = 'openai' | 'groq' | 'gemini' | 'grok' | 'fake';
 
@@ -55,6 +56,15 @@ export interface AiProvider {
   helpFor(ctx: HelpContext, opts?: CallOptions): Promise<HelpCardCore>;
   readRevision(input: RevisionInput, opts?: CallOptions): Promise<RevisionReading>;
   labelConcept(segmentText: string, opts?: CallOptions): Promise<string>;
+  /**
+   * The card rewritten in `language` (never 'en'): same meaning, math notation untouched, and the
+   * four options in the same order, so the stored English card's answerIdx still grades it. The
+   * returned answerIdx is always the source card's (the model is never asked for it).
+   * Optional: without it, help stays in English (with a note).
+   */
+  localizeHelp?(card: HelpCardCore, language: LanguageCode, opts?: CallOptions): Promise<HelpCardCore>;
+  /** A spoken session recap rewritten in `language` (≤ 90 words). Optional, like localizeHelp. */
+  polishRecap?(text: string, language: LanguageCode, opts?: CallOptions): Promise<string>;
 }
 
 /** The model answered, but not with something we accept (after the one repair retry). */

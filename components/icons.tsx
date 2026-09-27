@@ -30,6 +30,14 @@ export const PenIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const MicIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="9" y="3" width="6" height="11" rx="3" />
+    <path d="M5.5 11a6.5 6.5 0 0 0 13 0" />
+    <path d="M12 17.5V21" />
+  </Svg>
+);
+
 export const EraserIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="m7.5 20-4.1-4.1a2 2 0 0 1 0-2.8L13.1 3.4a2 2 0 0 1 2.8 0l4.7 4.7a2 2 0 0 1 0 2.8L11.5 20Z" />
@@ -102,7 +110,7 @@ export const ArrowRightIcon = (p: IconProps) => (
   </Svg>
 );
 
-/** Inkling mark: an ink drop resting on a dashed vermilion "ghost" rule. */
+/** Inkling mark: an ink drop resting on a dashed teal "ghost" rule. */
 export function InklingMark({ size = 28, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false" className={className}>

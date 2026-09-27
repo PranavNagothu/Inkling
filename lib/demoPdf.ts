@@ -4,15 +4,16 @@ import "server-only";
 // the session's live ink on ruled paper, and none of the erased attempts. The page is the same
 // frame the compare screen fits the process into (inkFrame in ./compare), so the overlay lines up
 // exactly. Vector paths only (no fonts), so pdf.js renders it offline with nothing to fetch.
-// pdf-lib is a devDependency: this runs from scripts/seed-demo (a dev install), never in the app.
+// Runs from scripts/seed-demo only (never in the app). pdf-lib is a runtime dependency since the
+// Send-to-Notability export (lib/notabilityExport.ts) also draws PDFs with it.
 import { LineCapStyle, PDFDocument, rgb } from "pdf-lib";
 import { inkFrame } from "./compare";
 import { activeStrokes } from "./ink";
 import type { Stroke } from "./types";
 
-const PAPER = rgb(1, 0.988, 0.961); // --color-paper
-const RULE = rgb(0.922, 0.898, 0.843); // --color-rule
-const INK = rgb(0.11, 0.102, 0.09); // --color-ink
+const PAPER = rgb(1, 1, 0.992); // --color-paper
+const RULE = rgb(0.859, 0.898, 0.933); // --color-rule
+const INK = rgb(0.059, 0.09, 0.165); // --color-ink
 const RULE_GAP = 32;
 const FIRST_RULE = 47;
 

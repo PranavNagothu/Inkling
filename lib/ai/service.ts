@@ -6,25 +6,40 @@ import "server-only";
 // revision row. Fresh generations are rate-limited per session, at most 2 run at once, and
 // concurrent requests for the same result share one call. DEMO_MODE serves bundled fixtures and
 // never touches the network.
+//
+// Languages (equity for ESL students): a card in another language is a translation of the moment's
+// stored English card, options in the same order, so grading (lib/gaps, against the English card's
+// answerIdx) never changes. Translations live only in ai_cache (key: provider|model|"help-i18n"|
+// {language, card}), never on the event row; when one can't be made (no provider support, out of
+// budget, invalid twice, DEMO_MODE without a fixture) the English card is served with a note.
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import demoFixturesJson from "@/public/demo/ai-cache.json";
+import { getTimeline } from "../analyze";
 import { createConceptTagger } from "../concepts";
 import { getDb } from "../db";
 import { publicHelp, toClientEvent } from "../events";
 import { attachHistory, withLectureLock } from "../gaps";
 import { getSessionLecture } from "../lecture";
 import { formatClock } from "../time";
-import type { HelpCard, PublicHelpCard, Revision, RevisionReading, Session, TimelineEvent, TranscriptWord } from "../types";
+import { buildRecap, type RecapPayload } from "../recap";
+import type { HelpCard, HelpSource, PublicHelpCard, Revision, RevisionReading, Session, TimelineEvent, TranscriptWord } from "../types";
 import { aiCacheKey, sha256 } from "./cache";
 import type { Env } from "./compat";
-import { demoEntryFor, demoHelpCard, parseDemoFixtures, type DemoFixtures } from "./demo";
+import { demoEntryFor, demoHelpCard, demoTranslation, parseDemoFixtures, type DemoFixtures } from "./demo";
+import type { LanguageCode } from "./languages";
 import { fallbackHelpCard } from "./fallback";
 import { createRateLimiter, createSemaphore, createSingleFlight, type RateLimiter, type Semaphore, type SingleFlight } from "./limits";
 import { aiStatusFrom, selectProvider, type AiStatus, type ProviderSelection } from "./select";
 import { selectTts, synthesizeSpeech, ttsCacheKey, ttsLabel } from "./tts";
-import type { AiProvider, HelpContext } from "./types";
-import { validateConceptLabel, validateHelpCard, validateRevisionReading } from "./validate";
+import type { AiProvider, HelpCardCore, HelpContext } from "./types";
+import {
+  validateConceptLabel,
+  validateHelpCard,
+  validateLocalizedHelpCard,
+  validateRecapText,
+  validateRevisionReading,
+} from "./validate";
 
 export interface AiLimits {
   rate: RateLimiter;
@@ -45,9 +60,30 @@ export interface AiServiceDeps {
 }
 
 export type Fail = { ok: false; status: number; error: string; retryAfterMs?: number };
-export type HelpResult = { ok: true; help: PublicHelpCard; event: TimelineEvent } | Fail;
+export type HelpResult =
+  | {
+      ok: true;
+      help: PublicHelpCard;
+      event: TimelineEvent;
+      /** The language the card is in. */
+      language: LanguageCode;
+      /** A language was asked for but the card is in English (the UI says so quietly). */
+      languageFallback?: boolean;
+    }
+  | Fail;
 export type ReadRevisionResult = { ok: true; revision: Revision; event: TimelineEvent } | Fail;
 export type SpeakResult = { ok: true; audio: Uint8Array; voice: string } | Fail;
+export type RecapResult = { ok: true; recap: RecapPayload } | Fail;
+
+/** A stored card's translation and where it came from. */
+interface Translation {
+  core: HelpCardCore;
+  source: HelpSource;
+  provider: string;
+}
+
+const sameCard = (a: HelpCardCore, b: HelpCardCore) =>
+  a.reexplain === b.reexplain && a.mcq.q === b.mcq.q && a.mcq.options.join("\u0000") === b.mcq.options.join("\u0000");
 
 const NOT_CONFIGURED: Fail = { ok: false, status: 503, error: "AI not configured" };
 
@@ -120,6 +156,8 @@ export function createAiService(deps: AiServiceDeps = {}) {
     call: () => Promise<T>,
     /** Every fresh generation (help, reading, label) counts against this session's AI budget. */
     session: Session,
+    /** false: only look in the cache (404 on a miss); never calls the provider. */
+    generate = true,
   ): Promise<{ ok: true; value: T } | Fail> {
     const db = getDb();
     const key = aiCacheKey({ provider: provider.name, model: provider.model, kind, input });
@@ -128,6 +166,7 @@ export function createAiService(deps: AiServiceDeps = {}) {
       const v = validate(hit.value);
       if (v.ok) return v;
     }
+    if (!generate) return { ok: false, status: 404, error: "not cached" };
     const limited = rateLimited(session);
     if (limited) return limited;
     const { semaphore, flight } = limits();
@@ -197,12 +236,15 @@ export function createAiService(deps: AiServiceDeps = {}) {
     }
   }
 
-  async function getHelp(eventId: string): Promise<HelpResult> {
+  /** The moment's stored (English) card, generated and stored on first open. */
+  async function ensureHelp(
+    eventId: string,
+  ): Promise<{ ok: true; card: HelpCard; event: TimelineEvent; stored: TimelineEvent; session: Session } | Fail> {
     const loaded = await load(eventId);
     if ("ok" in loaded) return loaded;
     const { event, session } = loaded;
     if (event.help && event.help.source !== "fallback") {
-      return { ok: true, help: publicHelp(event.help), event: await clientEvent(session, eventId) };
+      return { ok: true, card: event.help, event: await clientEvent(session, eventId), stored: event, session };
     }
     const sel = select();
     if (!sel.provider) return NOT_CONFIGURED;
@@ -230,7 +272,70 @@ export function createAiService(deps: AiServiceDeps = {}) {
     const card = help;
     await withLectureLock(session.studentId, session.lectureId, () => getDb().setEventHelp(event.id, card));
     await upgradeConceptLabel(event, lecture.id, words, sel, session);
-    return { ok: true, help: publicHelp(card), event: await clientEvent(session, eventId) };
+    return { ok: true, card, event: await clientEvent(session, eventId), stored: event, session };
+  }
+
+  /**
+   * The stored card in `language` (not 'en'), or null when there is none to serve: DEMO_MODE uses
+   * the bundled translations only; otherwise the provider translates it (cached), or — with
+   * `generate: false` — only an already cached translation is returned. Never throws.
+   */
+  async function translate(
+    card: HelpCard,
+    event: Pick<TimelineEvent, "lectureMs">,
+    session: Session,
+    language: LanguageCode,
+    generate: boolean,
+  ): Promise<Translation | null> {
+    const source: HelpCardCore = { reexplain: card.reexplain, mcq: card.mcq };
+    const sel = select();
+    if (sel.mode === "demo") {
+      const entry = demoEntryFor(demoFixtures(), session.lectureId, event.lectureMs);
+      const core = entry && sameCard(entry.help, source) ? demoTranslation(entry, language) : null;
+      return core ? { core, source: "demo", provider: "demo" } : null;
+    }
+    const provider = sel.provider;
+    if (!provider?.localizeHelp) return null;
+    try {
+      const res = await cachedCall(
+        "help-i18n",
+        provider,
+        { language, card: source },
+        (v) => validateLocalizedHelpCard(v, source),
+        () => provider.localizeHelp!(source, language),
+        session,
+        generate,
+      );
+      if (!res.ok) return null;
+      // The source's answerIdx, whatever was cached (the validator enforces it).
+      return { core: res.value, source: card.source ?? "ai", provider: provider.name };
+    } catch (err) {
+      console.warn(`help translation failed (${provider.name}, ${language})`, err instanceof Error ? err.message : err);
+      return null;
+    }
+  }
+
+  /** The moment's help card in `language` (English by default). The answer never leaves the server. */
+  async function getHelp(eventId: string, language: LanguageCode = "en"): Promise<HelpResult> {
+    const en = await ensureHelp(eventId);
+    if (!en.ok) return en;
+    const english = { ok: true as const, help: publicHelp(en.card), event: en.event, language: "en" as const };
+    if (language === "en") return english;
+    const t = await translate(en.card, en.stored, en.session, language, true);
+    if (!t) return { ...english, languageFallback: true };
+    return { ok: true, help: publicHelp({ ...t.core, source: t.source, provider: t.provider }), event: en.event, language };
+  }
+
+  /**
+   * The check question's explanation in `language`, for the answer the student just gave: only an
+   * existing translation (the card they answered), never a new one. null → use the English "why".
+   */
+  async function localizedWhy(eventId: string, language: LanguageCode): Promise<string | null> {
+    if (language === "en") return null;
+    const loaded = await load(eventId);
+    if ("ok" in loaded || !loaded.event.help) return null;
+    const t = await translate(loaded.event.help, loaded.event, loaded.session, language, false);
+    return t?.core.mcq.why ?? null;
   }
 
   async function readRevision(eventId: string, pngs: { beforePng: string; afterPng: string }): Promise<ReadRevisionResult> {
@@ -265,18 +370,25 @@ export function createAiService(deps: AiServiceDeps = {}) {
     return { ok: true, revision: { ...revision, vision: reading }, event: await clientEvent(session, eventId) };
   }
 
-  async function speak(eventId: string): Promise<SpeakResult> {
+  /** The moment's explanation as speech, in `language` (the translation the student is reading). */
+  async function speak(eventId: string, language: LanguageCode = "en"): Promise<SpeakResult> {
     const loaded = await load(eventId);
     if ("ok" in loaded) return loaded;
     const { event, session } = loaded;
-    const text = event.help?.reexplain;
-    if (!text) return { ok: false, status: 409, error: "This moment has no explanation yet." };
+    if (!event.help?.reexplain) return { ok: false, status: 409, error: "This moment has no explanation yet." };
+    const text = language === "en" ? event.help.reexplain : (await translate(event.help, event, session, language, false))?.core.reexplain;
+    if (!text) return { ok: false, status: 409, error: "This explanation isn’t ready in that language yet." };
+    return speakText(session, text, language);
+  }
+
+  /** Stored text → mp3, through the disk cache (keyed by voice, model, text and language). */
+  async function speakText(session: Session, text: string, language: LanguageCode): Promise<SpeakResult> {
     const { tts, reason } = selectTts(env());
     if (!tts) return { ok: false, status: 503, error: `No voice configured (${reason}).` };
 
     const dir = ttsDir();
     // Hex digest: safe as a file name.
-    const file = join(dir, `${ttsCacheKey(tts, text)}.mp3`);
+    const file = join(dir, `${ttsCacheKey(tts, text, language)}.mp3`);
     try {
       return { ok: true, audio: new Uint8Array(await readFile(file)), voice: ttsLabel(tts) };
     } catch {
@@ -288,7 +400,7 @@ export function createAiService(deps: AiServiceDeps = {}) {
       const { semaphore, flight } = limits();
       const audio = await flight.run(file, () =>
         semaphore.run(async () => {
-          const bytes = await synthesizeSpeech(tts, text, { fetch: deps.fetch });
+          const bytes = await synthesizeSpeech(tts, text, { fetch: deps.fetch, language });
           await mkdir(dir, { recursive: true });
           const tmp = `${file}.${process.pid}.tmp`;
           await writeFile(tmp, bytes);
@@ -301,6 +413,66 @@ export function createAiService(deps: AiServiceDeps = {}) {
       console.warn(`speech synthesis failed (${tts.kind})`, err instanceof Error ? err.message : err);
       return { ok: false, status: 502, error: "Couldn’t make the audio right now." };
     }
+  }
+
+  /**
+   * The session's spoken recap (lib/recap) in `language`: the deterministic template for English,
+   * for DEMO_MODE and whenever AI can't help; otherwise the provider translates the English recap
+   * (cached, counted against the session's AI budget). `audioUrl` is set when a server voice is
+   * configured (POST it for the mp3); without one the client speaks it in the browser.
+   */
+  async function recap(sessionId: string, language: LanguageCode = "en"): Promise<RecapResult> {
+    const session = await getDb().getSession(sessionId);
+    if (!session) return { ok: false, status: 404, error: "session not found" };
+    const [timeline, { lecture }] = await Promise.all([getTimeline(sessionId), getSessionLecture(session.lectureId)]);
+    const input = { title: lecture.title, events: timeline?.events ?? [] };
+    const local = buildRecap(input, language);
+    let text = local.text;
+    let lang: LanguageCode = local.language;
+    let source: RecapPayload["source"] = "template";
+
+    const sel = language === "en" ? null : select();
+    const provider = sel && sel.mode !== "demo" ? sel.provider : null;
+    if (provider?.polishRecap) {
+      const english = local.language === "en" ? local.text : buildRecap(input, "en").text;
+      try {
+        const res = await cachedCall(
+          "recap",
+          provider,
+          { language, text: english },
+          (v) => validateRecapText({ recap: v }),
+          () => provider.polishRecap!(english, language),
+          session,
+        );
+        if (res.ok) {
+          text = res.value;
+          lang = language;
+          source = "ai";
+        }
+      } catch (err) {
+        console.warn(`recap translation failed (${provider.name}, ${language})`, err instanceof Error ? err.message : err);
+      }
+    }
+
+    const { tts } = selectTts(env());
+    return {
+      ok: true,
+      recap: {
+        text,
+        language: lang,
+        source,
+        ...(lang !== language ? { languageFallback: true } : {}),
+        ...(tts ? { audioUrl: `/api/sessions/${encodeURIComponent(session.id)}/recap/audio`, voice: ttsLabel(tts) } : {}),
+      },
+    };
+  }
+
+  /** The recap as speech (the same text `recap` returns), through the TTS disk cache. */
+  async function speakRecap(sessionId: string, language: LanguageCode = "en"): Promise<SpeakResult> {
+    const res = await recap(sessionId, language);
+    if (!res.ok) return res;
+    const session = (await getDb().getSession(sessionId))!;
+    return speakText(session, res.recap.text, res.recap.language);
   }
 
   /** Background warm-up after analysis: help for up to `limit` moments (gaps first). Returns how many. */
@@ -323,8 +495,11 @@ export function createAiService(deps: AiServiceDeps = {}) {
   return {
     status: (): AiStatus => ({ ...aiStatusFrom(select()), tts: selectTts(env()).tts !== null }),
     getHelp,
+    localizedWhy,
     readRevision,
     speak,
+    recap,
+    speakRecap,
     prefetchHelp,
   };
 }

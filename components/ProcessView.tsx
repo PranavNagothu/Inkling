@@ -130,7 +130,7 @@ export default function ProcessView({ sessionId, strokes, events, revisions, vis
                   tabIndex={hidden ? -1 : undefined}
                   className="group absolute inline-flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-pill"
                 >
-                  <span className="inline-flex size-6 items-center justify-center rounded-pill bg-chrome shadow-[0_0_0_1px_rgb(28_26_23/0.12),0_2px_6px_-1px_rgb(28_26_23/0.25)] transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95">
+                  <span className="inline-flex size-6 items-center justify-center rounded-pill bg-chrome shadow-[0_0_0_1px_rgb(15_23_42/0.12),0_2px_6px_-1px_rgb(15_23_42/0.25)] transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-95">
                     <MomentGlyph type={event.type} size={16} />
                   </span>
                 </Link>

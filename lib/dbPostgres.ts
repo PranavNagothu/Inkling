@@ -56,6 +56,7 @@ import {
   type EventRow,
   type InkHotspot,
   type InkWindowStat,
+  type LectureMediaPatch,
   type LectureRecord,
   type LectureRow,
   type NewLecture,
@@ -1110,6 +1111,17 @@ export class PostgresDb implements Db {
       source,
       id,
     ]);
+    if (changed === 0) return null;
+    return (await this.getLecture(id))!.lecture;
+  }
+
+  async setLectureMedia(id: string, patch: LectureMediaPatch) {
+    const changed = await this.run(
+      `UPDATE lectures SET media_path = COALESCE($1, media_path), media_type = COALESCE($2, media_type),
+                           mime = COALESCE($3, mime), duration_ms = COALESCE($4::float8, duration_ms)
+       WHERE id = $5`,
+      [patch.mediaPath ?? null, patch.mediaType ?? null, patch.mime ?? null, patch.durationMs ?? null, id],
+    );
     if (changed === 0) return null;
     return (await this.getLecture(id))!.lecture;
   }

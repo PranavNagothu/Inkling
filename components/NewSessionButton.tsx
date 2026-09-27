@@ -52,7 +52,7 @@ export default function NewSessionButton({ lectures, defaultLectureId }: Props) 
     <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <label htmlFor={selectId} className="px-1 text-xs font-medium tracking-wide text-ink-subtle uppercase">
+          <label htmlFor={selectId} className="px-1 text-xs font-bold tracking-wide text-ink-muted uppercase">
             Lecture
           </label>
           <div className="relative">
@@ -61,7 +61,7 @@ export default function NewSessionButton({ lectures, defaultLectureId }: Props) 
               data-testid="lecture-picker"
               value={lectureId}
               onChange={(e) => setLectureId(e.target.value)}
-              className="min-h-11 w-full appearance-none truncate rounded-md border border-line-strong bg-paper py-2 pr-10 pl-3.5 text-[15px] font-medium text-ink shadow-hairline transition-colors hover:border-ink-subtle"
+              className="min-h-11 w-full appearance-none truncate rounded-pill border border-line-strong bg-white py-2 pr-10 pl-4 text-[15px] font-medium text-ink shadow-[0_1px_2px_rgb(15_23_42/0.04)] transition-colors hover:border-accent/60"
             >
               {lectures.map((l) => (
                 <option key={l.id} value={l.id}>

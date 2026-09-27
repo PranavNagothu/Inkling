@@ -147,3 +147,109 @@ export function validateConceptLabel(raw: unknown): Validated<string> {
   const value = label(raw.label, 'label', issues);
   return issues.length > 0 ? { ok: false, issues } : { ok: true, value };
 }
+
+// ── Translated cards and recaps ─────────────────────────────────────────────────────────────────
+// Other languages run longer than English (and some scripts have no spaces), so the limits are
+// looser and every field also has a character cap.
+
+export const I18N_LIMITS = {
+  reexplainWords: 120,
+  reexplainChars: 900,
+  questionWords: 60,
+  questionChars: 400,
+  optionChars: 240,
+  whyWords: 75,
+  whyChars: 600,
+  recapWords: 90,
+  recapChars: 700,
+} as const;
+
+/** Cuts to `maxChars` (at a sentence end when there is one past the halfway mark). */
+function capChars(t: string, maxChars: number): string {
+  if (t.length <= maxChars) return t;
+  const cut = t.slice(0, maxChars);
+  const end = Math.max(...['.', '!', '?', '。', '।', '؟'].map((p) => cut.lastIndexOf(p)));
+  return end >= maxChars / 2 ? cut.slice(0, end + 1) : `${cut.trimEnd()}…`;
+}
+
+/** Like `text`, with a character cap too (rejected far past either limit, else cut). */
+function boundedText(v: unknown, field: string, maxWords: number, maxChars: number, issues: string[]): string {
+  if (typeof v !== 'string') {
+    issues.push(`${field} must be a string`);
+    return '';
+  }
+  const t = cleanText(v);
+  if (!t) {
+    issues.push(`${field} must not be empty`);
+    return '';
+  }
+  const n = countWords(t);
+  if (n > maxWords * LIMITS.repairFactor || t.length > maxChars * LIMITS.repairFactor) {
+    issues.push(`${field} must be at most ${maxWords} words and ${maxChars} characters`);
+    return '';
+  }
+  return capChars(n > maxWords ? truncateWords(t, maxWords) : t, maxChars);
+}
+
+/**
+ * The math in a string: whitespace-separated tokens with a digit, "^", "(", ")" or "=" in them,
+ * trailing punctuation dropped ("3(2x + 5)^2 * 2" → ["3(2x", "5)^2", "2"]).
+ */
+export function mathTokens(s: string): string[] {
+  return s
+    .split(/\s+/)
+    .map((t) => t.replace(/[.,;:!?]+$/, ''))
+    .filter((t) => /[\d^()=]/.test(t));
+}
+
+const squash = (s: string) => s.replace(/\s+/g, '');
+
+/**
+ * A translated help card, checked against the card it translates: 4 distinct options, each still
+ * carrying the math of the option at the same position (so a reordering can't slip through and
+ * make the stored answerIdx grade the wrong option), bounded text, and the source's answerIdx.
+ */
+export function validateLocalizedHelpCard(raw: unknown, source: HelpCardCore): Validated<HelpCardCore> {
+  const issues: string[] = [];
+  if (!isObj(raw)) return { ok: false, issues: ['answer must be a JSON object'] };
+  const reexplain = boundedText(raw.reexplain, 'reexplain', I18N_LIMITS.reexplainWords, I18N_LIMITS.reexplainChars, issues);
+  const mcq = raw.mcq;
+  if (!isObj(mcq)) return { ok: false, issues: [...issues, 'mcq must be an object'] };
+  const q = boundedText(mcq.q, 'mcq.q', I18N_LIMITS.questionWords, I18N_LIMITS.questionChars, issues);
+  const why = boundedText(mcq.why, 'mcq.why', I18N_LIMITS.whyWords, I18N_LIMITS.whyChars, issues);
+
+  let options: string[] = [];
+  if (!Array.isArray(mcq.options) || mcq.options.length !== 4 || source.mcq.options.length !== 4) {
+    issues.push('mcq.options must have exactly 4 items, in the same order as the original');
+  } else {
+    options = mcq.options.map((o, i) => {
+      if (typeof o !== 'string') {
+        issues.push(`mcq.options[${i}] must be a string`);
+        return '';
+      }
+      const t = cleanText(o);
+      if (!t) issues.push(`mcq.options[${i}] must not be empty`);
+      else if (t.length > I18N_LIMITS.optionChars) issues.push(`mcq.options[${i}] must be at most ${I18N_LIMITS.optionChars} characters`);
+      else {
+        const missing = mathTokens(source.mcq.options[i]).filter((m) => !squash(t).includes(squash(m)));
+        if (missing.length > 0) {
+          issues.push(`mcq.options[${i}] must translate original option ${i + 1} and keep its math exactly (missing ${missing.join(' ')})`);
+        }
+      }
+      return t;
+    });
+    const distinct = new Set(options.map((o) => o.toLowerCase()));
+    if (options.every(Boolean) && distinct.size !== 4) issues.push('mcq.options must be 4 different answers');
+  }
+
+  if (issues.length > 0) return { ok: false, issues };
+  return { ok: true, value: { reexplain, mcq: { q, options, answerIdx: source.mcq.answerIdx, why } } };
+}
+
+/** `{ recap }` → the recap text (≤ 90 words, bounded characters). */
+export function validateRecapText(raw: unknown): Validated<string> {
+  if (!isObj(raw)) return { ok: false, issues: ['answer must be a JSON object'] };
+  const issues: string[] = [];
+  const value = boundedText(raw.recap, 'recap', I18N_LIMITS.recapWords, I18N_LIMITS.recapChars, issues);
+  return issues.length > 0 ? { ok: false, issues } : { ok: true, value };
+}

@@ -174,7 +174,7 @@ test("touch-action: the review canvas lets a finger scroll and zoom; the note ca
 });
 
 test("draw → erase part → rewrite over it → End session shows a corrected moment", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByTestId("new-session").click();
   await page.waitForURL(/\/session\/[^/]+$/);
   const sessionId = page.url().split("/session/")[1];

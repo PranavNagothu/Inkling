@@ -1,8 +1,8 @@
 // Canvas 2D rendering of strokes, shared by capture and review views.
 import type { BBox, Point, Stroke } from "./types";
 
-export const INK_COLOR = "#1c1a17"; // --color-ink
-export const GHOST_COLOR = "#e4572e"; // --color-ghost (vermilion)
+export const INK_COLOR = "#0f172a"; // --color-ink
+export const GHOST_COLOR = "#0d9488"; // --color-ghost (teal, drawn dashed at 50%)
 export const BASE_WIDTH = 2.4;
 
 function widthFor(p: Point, pointerType: Stroke["pointerType"]): number {
@@ -30,14 +30,14 @@ export function drawStrokePath(ctx: CanvasRenderingContext2D, points: Point[], p
   }
 }
 
-/** Draws one stroke as ink or ghost ink. `alpha` overrides the default opacity (ink 1, ghost 0.4). */
+/** Draws one stroke as ink or ghost ink. `alpha` overrides the default opacity (ink 1, ghost 0.5). */
 export function drawStroke(ctx: CanvasRenderingContext2D, s: Stroke, ghost: boolean, alpha?: number) {
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   if (alpha !== undefined) ctx.globalAlpha = alpha;
   if (ghost) {
-    ctx.globalAlpha = alpha ?? 0.4;
+    ctx.globalAlpha = alpha ?? 0.5; // teal is lighter than ink: half strength keeps it legible yet clearly "erased"
     ctx.strokeStyle = GHOST_COLOR;
     ctx.fillStyle = GHOST_COLOR;
     ctx.setLineDash([6, 5]);

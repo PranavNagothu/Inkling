@@ -43,6 +43,7 @@ import {
   type DbInfo,
   type EraseRow,
   type EventRow,
+  type LectureMediaPatch,
   type LectureRecord,
   type LectureRow,
   type NewLecture,
@@ -656,6 +657,18 @@ class SqliteDb implements Db {
     const res = this.db
       .prepare(`UPDATE lectures SET transcript = ?, transcript_source = ? WHERE id = ?`)
       .run(JSON.stringify(words), source, id);
+    if (res.changes === 0) return null;
+    return this.readLecture(id)!.lecture;
+  }
+
+  async setLectureMedia(id: string, patch: LectureMediaPatch) {
+    const res = this.db
+      .prepare(
+        `UPDATE lectures SET media_path = COALESCE(?, media_path), media_type = COALESCE(?, media_type),
+                             mime = COALESCE(?, mime), duration_ms = COALESCE(?, duration_ms)
+         WHERE id = ?`,
+      )
+      .run(patch.mediaPath ?? null, patch.mediaType ?? null, patch.mime ?? null, patch.durationMs ?? null, id);
     if (res.changes === 0) return null;
     return this.readLecture(id)!.lecture;
   }

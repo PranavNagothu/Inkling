@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "motion/react";
+import { motionTokens } from "@/lib/motion";
+import { usePrefersReducedMotion } from "./motion/usePrefersReducedMotion";
 import type { AiStatus } from "@/lib/ai/types";
 import type {
   EraseEvent,
@@ -23,6 +26,7 @@ import { MOMENT_META } from "@/lib/moments";
 import InkCanvas from "./InkCanvas";
 import LectureMedia from "./LectureMedia";
 import MomentDetail from "./MomentDetail";
+import SessionRecap from "./SessionRecap";
 import Timeline, { MomentGlyph } from "./Timeline";
 import { CompareIcon, PenIcon } from "./icons";
 import { useSessionTimeline } from "./useSessionTimeline";
@@ -59,7 +63,7 @@ function Stat({
   moment?: TimelineEventType;
 }) {
   return (
-    <li className="inline-flex min-h-9 items-center gap-2 rounded-pill border border-line bg-chrome px-3.5 text-sm">
+    <li className="inline-flex min-h-9 items-center gap-2 rounded-pill border border-line bg-chrome px-3.5 text-sm shadow-[0_1px_2px_rgb(15_23_42/0.04)]">
       {ghost ? (
         <span aria-hidden="true" className="inline-block w-3.5 border-t-2 border-dashed border-ghost" />
       ) : null}
@@ -86,6 +90,7 @@ export default function ReviewView({
   ai,
 }: Props) {
   const mediaRef = useRef<HTMLMediaElement>(null);
+  const reduceMotion = usePrefersReducedMotion();
   const [showGhost, setShowGhost] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(initialMomentId);
   const [carried, setCarried] = useState<CarriedThread[]>(initialCarried);
@@ -110,6 +115,11 @@ export default function ReviewView({
   const strokesById = useMemo(() => new Map(strokes.map((s) => [s.id, s])), [strokes]);
 
   const events = useMemo(() => timeline?.events ?? [], [timeline]);
+  // Changes whenever what the recap describes does (analysis finished, a check answer, a resolve).
+  const recapVersion = useMemo(
+    () => `${status}:${events.map((e) => `${e.id}.${e.type}.${e.status}.${e.checkAttempts.length}`).join(",")}`,
+    [status, events],
+  );
   const selected = events.find((e) => e.id === selectedId) ?? null;
   const revision = selected?.revisionId ? timeline?.revisions.find((r) => r.id === selected.revisionId) : undefined;
   // Shared with the compare page ("What the final page hides") so the two always agree.
@@ -182,21 +192,23 @@ export default function ReviewView({
         <div className="flex min-w-[10rem] flex-1 items-center gap-1">
           <BackLink />
           <div className="min-w-0">
-            <p className="truncate text-xs font-medium tracking-wide text-ink-subtle uppercase">
-              Review <span className="normal-case tracking-normal">· {lecture.title}</span>
+            <p className="truncate text-xs font-bold tracking-wide text-accent-press uppercase">
+              Review <span className="font-medium tracking-normal text-ink-subtle normal-case">· {lecture.title}</span>
             </p>
-            <h1 className="truncate text-base leading-tight font-semibold text-ink">{session.title}</h1>
+            <h1 className="truncate text-base leading-tight font-bold tracking-tight text-ink">{session.title}</h1>
           </div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           <GhostToggle checked={showGhost} onChange={setShowGhost} />
           <Link href={`/compare/${session.id}`} data-testid="compare-link" className={btnSecondary}>
             <CompareIcon size={16} />
-            Compare with Notability
+            <span className="sm:hidden">Compare</span>
+            <span className="hidden sm:inline">Compare with Notability</span>
           </Link>
           <Link href={`/session/${session.id}`} className={btnSecondary}>
             <PenIcon size={16} />
-            Continue notes
+            <span className="sm:hidden">Notes</span>
+            <span className="hidden sm:inline">Continue notes</span>
           </Link>
         </div>
       </TopBar>
@@ -231,6 +243,8 @@ export default function ReviewView({
           />
         </ul>
 
+        <SessionRecap sessionId={session.id} serverVoice={ai.tts} version={recapVersion} />
+
         <Timeline
           status={status}
           durationMs={timeline?.durationMs ?? lecture.durationMs}
@@ -256,10 +270,22 @@ export default function ReviewView({
       />
 
       <main className="flex min-h-[420px] flex-1 flex-col lg:min-h-0 lg:flex-row">
+        {/* The panel slides in beside the page (never around it: the canvas is not in a transformed
+            container). Switching moments swaps the content in place; only opening/closing animates. */}
+        <AnimatePresence initial={false}>
         {selected && timeline ? (
-          <aside
+          <motion.aside
+            key="moment-details"
             aria-label="Moment details"
-            className="order-first shrink-0 border-b border-line bg-chrome px-4 py-4 lg:order-last lg:w-[22rem] lg:overflow-y-auto lg:overscroll-contain lg:border-b-0 lg:border-l"
+            initial={{ opacity: 0, x: motionTokens.distance.md }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: motionTokens.distance.md }}
+            transition={
+              reduceMotion
+                ? { duration: 0 }
+                : { duration: motionTokens.duration.fast + 0.04, ease: motionTokens.easing.smooth }
+            }
+            className="order-first shrink-0 border-b border-line bg-chrome px-4 py-4 shadow-[-12px_0_32px_-24px_rgb(15_23_42/0.25)] sm:px-5 lg:order-last lg:w-[23rem] lg:overflow-y-auto lg:overscroll-contain lg:border-b-0 lg:border-l"
           >
             <MomentDetail
               key={selected.id}
@@ -277,8 +303,9 @@ export default function ReviewView({
               onEventsChange={mergeEvents}
               onRevisionChange={updateRevision}
             />
-          </aside>
+          </motion.aside>
         ) : null}
+        </AnimatePresence>
         <InkCanvas
           strokes={strokes}
           showGhost={showGhost}

@@ -11,7 +11,7 @@ const STROKES_ROUTE = "**/api/sessions/*/strokes";
 const EVIL = { Origin: "http://evil.example" };
 
 async function newSession(page: Page) {
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByTestId("new-session").click();
   await page.waitForURL(/\/session\/[^/]+$/);
   await expect(page.getByTestId("ink-canvas")).toBeVisible();

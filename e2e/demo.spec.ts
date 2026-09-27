@@ -43,7 +43,7 @@ test("the two-minute demo runs end to end, offline, with no errors", async ({ pa
   page.on("pageerror", (e) => errors.push(e.message));
 
   // 1. Home: Maya's two sessions (classmates only feed the class hotspots), with stroke counts.
-  await page.goto("/");
+  await page.goto("/app");
   const rows = page.getByTestId("session-link");
   await expect(rows).toHaveCount(2);
   await expect(rows.nth(0)).toContainText("Maya — Session 2");
@@ -173,7 +173,7 @@ test("the health check and home page answer on the demo server", async ({ reques
   const health = await request.get("/api/health");
   expect(health.status()).toBe(200);
   expect(await health.json()).toMatchObject({ ok: true });
-  const home = await request.get("/");
+  const home = await request.get("/app");
   expect(home.status()).toBe(200);
   expect(await home.text()).toContain("Maya — Session 1");
 });

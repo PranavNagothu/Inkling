@@ -35,26 +35,36 @@ export default defineConfig({
     // production builds; see lib/ai/service aiDisabledByRequest), exactly as before AI existed.
     {
       name: "chromium",
-      testIgnore: /(phase5|demo)\.spec\.ts$/,
+      testIgnore: /(phase5|impact|demo|landing)\.spec\.ts$/,
       use: { ...devices["Desktop Chrome"], extraHTTPHeaders: { "x-inkling-ai": "off" } },
     },
-    // Phase 5 (AI re-teach) against the deterministic fake provider.
-    { name: "ai", testMatch: /phase5\.spec\.ts$/, use: { ...devices["Desktop Chrome"] } },
+    // Phase 5 (AI re-teach) and the multilingual re-teach / audio recap (impact) against the
+    // deterministic fake provider.
+    { name: "ai", testMatch: /(phase5|impact)\.spec\.ts$/, use: { ...devices["Desktop Chrome"] } },
     // Phase 8: the seeded demo, offline, against the production build (next start, DEMO_MODE=1).
     {
       name: "demo",
       testMatch: /demo\.spec\.ts$/,
       use: { ...devices["Desktop Chrome"], baseURL: `http://127.0.0.1:${DEMO_PORT}` },
     },
+    // The marketing page (/welcome) and its Ask Inkling assistant, on the same production server.
+    // LANDING_AI_DISABLED=1 there: the assistant always answers from the offline FAQ matcher.
+    {
+      name: "landing",
+      testMatch: /landing\.spec\.ts$/,
+      use: { ...devices["Desktop Chrome"], baseURL: `http://127.0.0.1:${DEMO_PORT}` },
+    },
   ],
   webServer: [
     {
       // The e2e DB and uploads are wiped before the server starts so runs are repeatable.
+      // Its own build folder (INKLING_DIST_DIR), so it can run next to an everyday `next dev`.
       command: `node e2e/reset-db.mjs && npm run dev -- --port ${PORT}`,
       url: `http://localhost:${PORT}`,
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
       env: {
+        INKLING_DIST_DIR: ".next-e2e",
         INKLING_DB_PATH: "data/e2e.db",
         // SQLite by default, never a DATABASE_URL from .env.local (an empty value blocks it).
         // INKLING_TEST_PG=1 runs the whole suite on the Postgres repository (embedded PGlite).
@@ -77,6 +87,7 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 420_000,
       env: {
+        INKLING_DIST_DIR: ".next-e2e-demo",
         INKLING_DB_PATH: "data/e2e-demo.db",
         DATABASE_URL: PG ? "pglite:data/e2e-demo-pg" : "",
         INKLING_UPLOAD_DIR: "data/e2e-demo-uploads",
@@ -84,6 +95,7 @@ export default defineConfig({
         DEMO_MODE: "1",
         AI_PROVIDER: "",
         ...NO_KEYS,
+        LANDING_AI_DISABLED: "1",
       },
     },
   ],

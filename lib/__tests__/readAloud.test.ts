@@ -16,6 +16,7 @@ import {
 
 class FakeUtterance implements UtteranceLike {
   rate = 1;
+  lang = '';
   onstart: UtteranceLike['onstart'] = null;
   onboundary: UtteranceLike['onboundary'] = null;
   onend: UtteranceLike['onend'] = null;
@@ -292,5 +293,40 @@ describe('server voice', () => {
     await flush();
     expect(t.views).toHaveLength(before);
     expect(t.audios[0].paused).toBeGreaterThan(0);
+  });
+});
+
+describe('language (multilingual help and recaps)', () => {
+  it('the browser voice speaks in the chosen language (utterance.lang)', () => {
+    const t = setup();
+    t.ctrl.start({ text: 'Hola', ttsUrl: URL_, serverVoice: false, lang: 'es-US' });
+    expect(t.utterances[0].lang).toBe('es-US');
+  });
+
+  it('leaves utterance.lang alone when no language is given (the page default)', () => {
+    const t = setup();
+    t.ctrl.start({ text: TEXT, ttsUrl: URL_, serverVoice: false });
+    expect(t.utterances[0].lang).toBe('');
+  });
+
+  it('sends the request body (the language) to the server voice', async () => {
+    const t = setup();
+    t.fetch.mockResolvedValue(mp3());
+    t.ctrl.start({ text: 'Hola', ttsUrl: URL_, serverVoice: true, body: '{"language":"es"}', lang: 'es-US' });
+    expect(t.fetch).toHaveBeenCalledWith(
+      URL_,
+      expect.objectContaining({ method: 'POST', body: '{"language":"es"}', headers: { 'content-type': 'application/json' } }),
+    );
+    await flush();
+    expect(t.last().state).toBe('speaking');
+  });
+
+  it('falls back to the browser voice in the same language', async () => {
+    const t = setup();
+    t.fetch.mockResolvedValue(new Response('{}', { status: 503 }));
+    t.ctrl.start({ text: 'नमस्ते', ttsUrl: URL_, serverVoice: true, body: '{"language":"hi"}', lang: 'hi-IN' });
+    await flush();
+    expect(t.utterances).toHaveLength(1);
+    expect(t.utterances[0].lang).toBe('hi-IN');
   });
 });

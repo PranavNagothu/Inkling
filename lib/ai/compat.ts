@@ -7,15 +7,26 @@ import "server-only";
 import {
   HELP_SCHEMA,
   LABEL_SCHEMA,
+  LOCALIZE_HELP_SCHEMA,
+  RECAP_SCHEMA,
   REVISION_SCHEMA,
   buildHelpMessages,
   buildLabelMessages,
+  buildLocalizeHelpMessages,
+  buildRecapMessages,
   buildRevisionMessages,
   type ChatMessage,
   type JsonSchemaSpec,
 } from './prompts';
 import { AiInvalidOutputError, AiRequestError, type AiProvider, type CallOptions, type ProviderName } from './types';
-import { validateConceptLabel, validateHelpCard, validateRevisionReading, type Validated } from './validate';
+import {
+  validateConceptLabel,
+  validateHelpCard,
+  validateLocalizedHelpCard,
+  validateRecapText,
+  validateRevisionReading,
+  type Validated,
+} from './validate';
 
 export type Env = Record<string, string | undefined>;
 
@@ -45,8 +56,11 @@ export interface CompatConfig {
 
 export const DEFAULTS = { timeoutMs: 10_000, maxRetries: 2, backoffMs: 400, maxRetryAfterMs: 3_000 } as const;
 
-/** Token caps per kind (a cap, not a cost: usage is billed). Room for minimal reasoning. */
-const MAX_TOKENS = { help: 1500, revision: 1000, label: 300 } as const;
+/**
+ * Token caps per kind (a cap, not a cost: usage is billed). Room for minimal reasoning; non-Latin
+ * scripts take several tokens per word, hence the larger translation caps.
+ */
+const MAX_TOKENS = { help: 1500, revision: 1000, label: 300, localize: 2000, recap: 900 } as const;
 
 /** A key from the environment, or null when unset / blank. */
 export function envKey(env: Env, name: string): string | null {
@@ -237,5 +251,15 @@ export function createCompatProvider(cfg: CompatConfig): AiProvider {
       generate((r) => buildRevisionMessages(input, { repair: r }), REVISION_SCHEMA, MAX_TOKENS.revision, validateRevisionReading, opts),
     labelConcept: (text, opts) =>
       generate((r) => buildLabelMessages(text, { repair: r }), LABEL_SCHEMA, MAX_TOKENS.label, validateConceptLabel, opts),
+    localizeHelp: (card, language, opts) =>
+      generate(
+        (r) => buildLocalizeHelpMessages(card, language, { repair: r }),
+        LOCALIZE_HELP_SCHEMA,
+        MAX_TOKENS.localize,
+        (raw) => validateLocalizedHelpCard(raw, card),
+        opts,
+      ),
+    polishRecap: (text, language, opts) =>
+      generate((r) => buildRecapMessages(text, language, { repair: r }), RECAP_SCHEMA, MAX_TOKENS.recap, validateRecapText, opts),
   };
 }

@@ -1,0 +1,170 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:03.761
+A student is watching an algebra lecture on expanding brackets.
+
+00:00:03.811 --> 00:00:06.956
+They write an answer, hesitate, erase it,
+
+00:00:06.956 --> 00:00:10.279
+and fix it: they'd forgotten the middle term.
+
+00:00:10.495 --> 00:00:12.191
+Their final notes look perfect.
+
+00:00:12.191 --> 00:00:16.829
+But every note app threw away the most important part:
+
+00:00:16.829 --> 00:00:19.943
+the mistake, and the moment they fixed it.
+
+00:00:20.025 --> 00:00:22.932
+The pauses, the erasing, the rewrites:
+
+00:00:22.932 --> 00:00:25.934
+that's where learning actually happens.
+
+00:00:25.934 --> 00:00:29.275
+And today, nobody sees it.
+
+00:00:29.325 --> 00:00:30.783
+Inkling keeps them.
+
+00:00:33.281 --> 00:00:35.737
+Inkling was built by Pranav Chowdary.
+
+00:00:36.629 --> 00:00:37.715
+This is Inkling.
+
+00:00:37.715 --> 00:00:41.083
+Here it is in the app, on a real calculus lecture.
+
+00:00:41.240 --> 00:00:44.488
+Here's Maya, taking notes while the lecture plays.
+
+00:00:44.488 --> 00:00:48.295
+Every stroke is tied to that moment in the lecture.
+
+00:00:53.176 --> 00:00:56.274
+She hesitates, then erases cos(x²).
+
+00:00:56.274 --> 00:00:58.681
+Inkling keeps it as ghost ink.
+
+00:00:58.906 --> 00:01:01.279
+She rewrites it and ends the session.
+
+00:01:02.844 --> 00:01:06.637
+Inkling pairs the mistake with its fix, right on the page.
+
+00:01:06.804 --> 00:01:10.374
+Across a full lecture, Inkling marks corrected mistakes,
+
+00:01:10.374 --> 00:01:14.755
+moments she got stuck, and breakthroughs, all from how she writes.
+
+00:01:14.805 --> 00:01:18.730
+At 1:40, she rewrote cos(x²) as cos(x²) · 2x.
+
+00:01:18.730 --> 00:01:24.238
+Inkling reads the change: she forgot the inner derivative.
+
+00:01:24.536 --> 00:01:28.360
+It re-teaches that one step and asks a check question.
+
+00:01:28.360 --> 00:01:31.431
+She gets it right: a breakthrough.
+
+00:01:31.666 --> 00:01:33.609
+The same help comes in her own language,
+
+00:01:33.609 --> 00:01:36.268
+here Spanish, with the math unchanged.
+
+00:01:36.650 --> 00:01:40.866
+Here she got stuck while the lecturer kept talking.
+
+00:01:40.866 --> 00:01:44.038
+Replay plays the exact 20 seconds she missed.
+
+00:01:44.278 --> 00:01:48.019
+Inkling uses Signal Lab to detect where she got stuck.
+
+00:01:48.019 --> 00:01:51.289
+Every stroke is time-stamped to the lecture.
+
+00:01:51.289 --> 00:01:52.994
+Every 10 seconds,
+
+00:01:52.994 --> 00:01:56.486
+Inkling tracks four signals against her own normal:
+
+00:01:56.486 --> 00:01:59.144
+pauses while the lecturer keeps talking,
+
+00:01:59.144 --> 00:02:01.747
+slower writing, extra erasing,
+
+00:02:01.747 --> 00:02:04.244
+and pen pressure when the pen reports it.
+
+00:02:04.244 --> 00:02:08.267
+Each spike in the score becomes a moment to re-teach.
+
+00:02:08.998 --> 00:02:12.303
+A Notability export keeps only the final page.
+
+00:02:12.303 --> 00:02:14.352
+Inkling shows everything it hid,
+
+00:02:14.352 --> 00:02:17.293
+and can send it all back as a PDF.
+
+00:02:17.520 --> 00:02:19.984
+Open gaps carry into her next session,
+
+00:02:19.984 --> 00:02:21.932
+until she writes through them.
+
+00:02:22.090 --> 00:02:24.234
+For teachers, Inkling shows where
+
+00:02:24.234 --> 00:02:26.446
+the whole class slowed down together,
+
+00:02:26.446 --> 00:02:29.043
+and the moments most worth re-teaching,
+
+00:02:29.043 --> 00:02:30.670
+all from anonymous pen data.
+
+00:02:30.720 --> 00:02:32.624
+Next.js runs the app,
+
+00:02:32.624 --> 00:02:36.289
+Gemini reads the handwriting, Groq writes the help,
+
+00:02:36.289 --> 00:02:38.095
+ElevenLabs speaks it,
+
+00:02:38.095 --> 00:02:40.792
+Tiger Data stores every pen stroke as time-series,
+
+00:02:40.792 --> 00:02:45.335
+Inkling uses its own Signal Lab to detect where you got stuck,
+
+00:02:45.335 --> 00:02:48.270
+and it all round-trips with Notability.
+
+00:02:48.320 --> 00:02:49.901
+The code is on GitHub.
+
+00:02:51.450 --> 00:02:52.272
+Inkling.
+
+00:02:52.272 --> 00:02:54.791
+Every other app deletes your mistakes.
+
+00:02:54.791 --> 00:02:56.154
+We keep them.
+

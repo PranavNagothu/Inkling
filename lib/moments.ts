@@ -6,15 +6,15 @@ export const MOMENT_META: Record<
   TimelineEventType,
   { label: string; legend: string; plural: [one: string, many: string]; color: string }
 > = {
-  // `color` mirrors the --color-* tokens in app/globals.css (canvas drawing needs literal colours).
+  // `color` mirrors the --color-* tokens in app/(product)/globals.css (canvas drawing needs literal colours).
   misconception_corrected: {
     label: "Corrected misconception",
     legend: "Corrected",
     plural: ["corrected", "corrected"],
-    color: "#d4880f",
+    color: "#0284c7",
   },
-  unresolved_gap: { label: "Unresolved gap", legend: "Unresolved gap", plural: ["gap", "gaps"], color: "#d23f2c" },
-  breakthrough: { label: "Breakthrough", legend: "Breakthrough", plural: ["breakthrough", "breakthroughs"], color: "#3f8f5a" },
+  unresolved_gap: { label: "Unresolved gap", legend: "Unresolved gap", plural: ["gap", "gaps"], color: "#d97706" },
+  breakthrough: { label: "Breakthrough", legend: "Breakthrough", plural: ["breakthrough", "breakthroughs"], color: "#1e293b" },
 };
 
 export const MOMENT_ORDER: TimelineEventType[] = ["misconception_corrected", "unresolved_gap", "breakthrough"];

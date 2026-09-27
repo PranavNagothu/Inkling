@@ -5,7 +5,7 @@ import type { EraseEvent, Stroke } from "../lib/types";
 // the rubbed-out part is kept as ghost ink (nothing is ever hard-deleted).
 
 async function newSession(page: Page) {
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByTestId("new-session").click();
   await page.waitForURL(/\/session\/[^/]+$/);
   const sessionId = page.url().split("/session/")[1];
@@ -24,7 +24,7 @@ async function drawStraight(page: Page, x0: number, y: number, x1: number) {
 
 type Pixels = { ink: number; ghost: number };
 
-/** Counts ink-dark and vermilion pixels in a CSS-px rectangle centred on (cx, cy) of a canvas. */
+/** Counts ink-dark and teal ghost-ink pixels in a CSS-px rectangle centred on (cx, cy) of a canvas. */
 async function pixelsAt(page: Page, testId: string, cx: number, cy: number, halfW: number, halfH: number) {
   return page.getByTestId(testId).evaluate(
     (el, [cx, cy, hw, hh]): Pixels => {
@@ -42,7 +42,7 @@ async function pixelsAt(page: Page, testId: string, cx: number, cy: number, half
       for (let i = 0; i < data.length; i += 4) {
         const [r, g, b, a] = [data[i], data[i + 1], data[i + 2], data[i + 3]];
         if (a > 150 && r < 90 && g < 90 && b < 90) ink++;
-        if (a > 20 && r > 150 && g < 120 && b < 120) ghost++;
+        if (a > 20 && r < 100 && g > 110 && b < g + 8 && g - r > 60) ghost++;
       }
       return { ink, ghost };
     },
@@ -90,7 +90,7 @@ test("rubbing the middle of a stroke erases only that part and keeps it as ghost
   expect((await pixelsAt(page, "ink-canvas", lx0 + 30, ly, 10, 4)).ink).toBeGreaterThan(5);
   expect((await pixelsAt(page, "ink-canvas", lx1 - 30, ly, 10, 4)).ink).toBeGreaterThan(5);
 
-  // Ghost on: the rubbed-out middle shows as vermilion ghost ink; the ends stay black.
+  // Ghost on: the rubbed-out middle shows as teal ghost ink; the ends stay black.
   await page.getByTestId("ghost-toggle").check();
   await expect(canvas).toHaveAttribute("data-ghost", "on");
   const middle = await pixelsAt(page, "ink-canvas", mid, ly, 20, 5);

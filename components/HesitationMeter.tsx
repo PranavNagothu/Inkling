@@ -18,14 +18,14 @@ const LABEL: Record<MeterState, string> = {
 // Literal class names so Tailwind generates them.
 const BAR_ON: Record<MeterState, string> = {
   calibrating: "bg-line-strong",
-  steady: "bg-ok",
-  slowing: "bg-corrected",
+  steady: "bg-accent",
+  slowing: "bg-amber-400",
   stuck: "bg-gap",
 };
 const TEXT: Record<MeterState, string> = {
   calibrating: "text-ink-subtle",
   steady: "text-ink-subtle",
-  slowing: "text-corrected-strong",
+  slowing: "text-gap-strong",
   stuck: "text-gap-strong",
 };
 

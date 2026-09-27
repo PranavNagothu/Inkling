@@ -37,7 +37,7 @@ export default function HotspotSparkline({
       data-testid="hotspots"
       data-peak-ms={peak?.startMs ?? ""}
       data-source={source}
-      className="flex flex-col gap-2 rounded-lg border border-line bg-chrome px-4 pt-3 pb-2.5 shadow-hairline"
+      className="flex flex-col gap-2 panel px-4 pt-3 pb-2.5"
     >
       <figcaption className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
         <span className="text-sm font-semibold text-ink">Where the class slowed down</span>
@@ -84,27 +84,29 @@ export default function HotspotSparkline({
         <span>{formatClock(durationMs)}</span>
       </div>
 
-      <table className="sr-only">
-        <caption>{summary}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Lecture time</th>
-            <th scope="col">Erased</th>
-            <th scope="col">Strokes</th>
-          </tr>
-        </thead>
-        <tbody>
-          {bars
-            .filter((b) => b.strokes > 0)
-            .map((b) => (
-              <tr key={b.startMs}>
-                <td>{range(b)}</td>
-                <td>{b.erased}</td>
-                <td>{b.strokes}</td>
-              </tr>
-            ))}
-        </tbody>
-      </table>
+      <div className="sr-only">
+        <table>
+          <caption>{summary}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Lecture time</th>
+              <th scope="col">Erased</th>
+              <th scope="col">Strokes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {bars
+              .filter((b) => b.strokes > 0)
+              .map((b) => (
+                <tr key={b.startMs}>
+                  <td>{range(b)}</td>
+                  <td>{b.erased}</td>
+                  <td>{b.strokes}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }

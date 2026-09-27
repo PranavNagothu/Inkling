@@ -5,7 +5,7 @@ import type { TranscriptSource, TranscriptWord } from "@/lib/types";
 import { toParagraphs, wordIndexAt } from "@/lib/transcript";
 import { formatClock } from "./LecturePlayer";
 import { CloseIcon } from "./icons";
-import { iconBtn } from "./ui";
+import { btnSecondary, iconBtn } from "./ui";
 
 /** How long auto-scroll stays paused after the student scrolls the transcript themselves. */
 const USER_SCROLL_PAUSE_MS = 6000;
@@ -14,6 +14,7 @@ const SOURCE_LABEL: Record<TranscriptSource, string> = {
   demo: "Demo transcript",
   captions: "From captions",
   whisper: "Auto-transcribed",
+  live: "Live transcript",
   none: "",
 };
 
@@ -98,7 +99,7 @@ function NoTranscript({
           onClick={transcribe}
           disabled={state === "working"}
           aria-busy={state === "working"}
-          className="press inline-flex min-h-11 items-center rounded-pill border border-line-strong bg-chrome px-4 text-sm font-semibold text-ink hover:bg-chrome-hover disabled:opacity-60"
+          className={btnSecondary}
         >
           {state === "working" ? "Transcribing…" : "Auto-transcribe"}
         </button>
@@ -227,7 +228,7 @@ function TranscriptPanel({
       className="enter-soft absolute inset-x-0 bottom-0 z-20 flex h-[46%] flex-col rounded-t-lg border-t border-line bg-chrome shadow-page lg:static lg:z-auto lg:h-auto lg:w-[21rem] lg:shrink-0 lg:rounded-none lg:border-t-0 lg:border-l lg:shadow-none"
     >
       <header className="flex min-h-12 shrink-0 items-center gap-2 border-b border-line pr-1 pl-4">
-        <h2 className="text-sm font-semibold text-ink">Transcript</h2>
+        <h2 className="text-sm font-bold tracking-tight text-ink">Transcript</h2>
         {SOURCE_LABEL[source] && words.length > 0 ? (
           <span className="text-xs text-ink-subtle">{SOURCE_LABEL[source]}</span>
         ) : null}

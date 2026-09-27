@@ -5,7 +5,7 @@ import type { BBox, Stroke } from "@/lib/types";
 
 export const CROP_PAD = 14;
 const MAX_ZOOM = 2;
-const PAPER = "#fffcf5"; // --color-paper
+const PAPER = "#fffffd"; // --color-paper
 /** Stay under the server's 200 KB per image, with room to spare. */
 const MAX_PNG_CHARS = Math.floor((180 * 1024 * 4) / 3);
 

@@ -68,8 +68,11 @@ export interface TranscriptWord {
 }
 
 export type LectureMediaType = 'audio' | 'video';
-/** Where a lecture's word timings came from; 'none' = no transcript (pause scoring is disabled). */
-export type TranscriptSource = 'demo' | 'captions' | 'whisper' | 'none';
+/**
+ * Where a lecture's word timings came from; 'none' = no transcript (pause scoring is disabled);
+ * 'live' = a Live lecture, transcribed in the browser while it happened (lib/liveLecture).
+ */
+export type TranscriptSource = 'demo' | 'captions' | 'whisper' | 'live' | 'none';
 
 /** Client-safe lecture metadata (the media path on disk never leaves the server). */
 export interface Lecture {
@@ -82,6 +85,11 @@ export interface Lecture {
   transcriptSource: TranscriptSource;
   wordCount: number;
   createdAtIso: string;
+  /**
+   * Set (true) while a Live lecture has no recording yet: its session captures from the microphone
+   * instead of playing media. Absent for every other lecture, and once the recording is uploaded.
+   */
+  live?: true;
 }
 
 /**

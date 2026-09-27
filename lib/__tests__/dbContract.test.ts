@@ -546,6 +546,30 @@ describe.each(backends)('Db contract: %s', (_name, open, backend) => {
       expect(await db.setLectureTranscript('l_nope', words, 'whisper')).toBeNull();
       expect(await db.getLecture('l_nope')).toBeNull();
     });
+
+    it('updates a Live lecture: no media until the recording is attached (null for unknown lectures)', async () => {
+      const l = await db.createLecture({
+        id: 'l_live',
+        title: 'Live',
+        courseId: 'c',
+        mediaPath: '',
+        mediaType: 'audio',
+        mime: 'audio/webm',
+        durationMs: 0,
+        words: [],
+        transcriptSource: 'live',
+      });
+      expect(l).toMatchObject({ transcriptSource: 'live', live: true, durationMs: 0 });
+      const words = [{ w: 'hi', startMs: 100, endMs: 400 }];
+      expect(await db.setLectureTranscript('l_live', words, 'live')).toMatchObject({ wordCount: 1, live: true });
+      // Only the length changes; the media fields stay.
+      expect(await db.setLectureMedia('l_live', { durationMs: 1500.5 })).toMatchObject({ durationMs: 1500.5, mime: 'audio/webm', live: true });
+      const done = await db.setLectureMedia('l_live', { mediaPath: 'data/uploads/r.m4a', mediaType: 'audio', mime: 'audio/mp4', durationMs: 2000 });
+      expect(done).toMatchObject({ mime: 'audio/mp4', durationMs: 2000, transcriptSource: 'live', wordCount: 1 });
+      expect(done!.live).toBeUndefined();
+      expect(await db.getLecture('l_live')).toEqual({ lecture: done, words, mediaPath: 'data/uploads/r.m4a' });
+      expect(await db.setLectureMedia('l_nope', { durationMs: 5 })).toBeNull();
+    });
   });
 
   describe('ink statistics', () => {

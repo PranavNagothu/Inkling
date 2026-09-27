@@ -101,6 +101,8 @@ export function createGroqProvider(text: CompatConfig, vision: CompatConfig | nu
     model: text.model,
     helpFor: textProvider.helpFor,
     labelConcept: textProvider.labelConcept,
+    localizeHelp: textProvider.localizeHelp,
+    polishRecap: textProvider.polishRecap,
     readRevision,
   };
 }

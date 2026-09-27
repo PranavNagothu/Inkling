@@ -58,7 +58,7 @@ const currentWordMs = async (page: Page) =>
   Number(await page.getByTestId("transcript-current").getAttribute("data-ms"));
 
 test("upload a lecture with captions via the form → it appears in the home picker", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByTestId("add-lecture").click();
   await page.waitForURL(/\/lectures\/new$/);
   await expect(page.getByRole("heading", { name: "Bring your own lecture" })).toBeVisible();
@@ -77,7 +77,7 @@ test("upload a lecture with captions via the form → it appears in the home pic
   await page.screenshot({ path: "screenshots/phase4-upload.png", animations: "disabled" });
 
   await page.getByTestId("upload-submit").click();
-  await page.waitForURL(/\/\?lecture=/);
+  await page.waitForURL(/\/app\?lecture=/);
   const lectureId = new URL(page.url()).searchParams.get("lecture")!;
   const picker = page.getByTestId("lecture-picker");
   await expect(picker).toHaveValue(lectureId);
@@ -98,7 +98,7 @@ test("upload a lecture with captions via the form → it appears in the home pic
 
 test("transcript panel follows playback, and clicking a later word seeks the lecture", async ({ page, request }) => {
   const lecture = await uploadLecture(request, "Transcript follow — e2e");
-  await page.goto(`/?lecture=${lecture.id}`);
+  await page.goto(`/app?lecture=${lecture.id}`);
   await expect(page.getByTestId("lecture-picker")).toHaveValue(lecture.id);
   await page.getByTestId("new-session").click();
   await page.waitForURL(/\/session\/[^/]+$/);
@@ -155,7 +155,7 @@ test("transcript panel follows playback, and clicking a later word seeks the lec
   await expect(page.getByTestId("play-toggle")).toHaveAttribute("data-state", "playing");
 
   // Home lists the session with its lecture's title.
-  await page.goto("/");
+  await page.goto("/app");
   const row = page.locator("li").filter({ has: page.locator(`a[href="/session/${sessionId}"]`) });
   await expect(row.getByTestId("session-lecture")).toHaveText("Transcript follow — e2e");
 });
@@ -232,7 +232,8 @@ test.describe("lecture API", () => {
     expect(after.length).toBe(before);
     // Every stored file belongs to a lecture (rejections never write to disk); names are server-made UUIDs.
     const files = readdirSync(UPLOAD_DIR);
-    expect(files.length).toBe(after.filter((l) => l.transcriptSource !== "demo").length);
+    // (A Live lecture has no file until its recording is uploaded; see e2e/live.spec.ts.)
+    expect(files.length).toBe(after.filter((l) => l.transcriptSource !== "demo" && !l.live).length);
     for (const f of files) expect(f).toMatch(/^[0-9a-f-]{36}\.(wav|webm|mp3|m4a|mp4)$/);
   });
 
@@ -302,7 +303,7 @@ test("a lecture without captions works end to end and says it has no transcript"
   await expect(page.getByTestId("media-info")).toContainText("00:40");
   await page.getByTestId("title-input").fill("No captions — e2e");
   await page.getByTestId("upload-submit").click();
-  await page.waitForURL(/\/\?lecture=/);
+  await page.waitForURL(/\/app\?lecture=/);
   const lectureId = new URL(page.url()).searchParams.get("lecture")!;
   await expect(page.getByTestId("lecture-meta")).toHaveText("00:40 · Audio · no transcript");
 
@@ -376,7 +377,7 @@ test("video lecture: compact video panel collapses without interrupting playback
     .setInputFiles({ name: "board-demo.webm", mimeType: "video/webm", buffer: Buffer.from(base64, "base64") });
   await expect(page.getByTestId("media-info")).toHaveText(/^Video · .+ · 00:0[234]$/);
   await page.getByTestId("upload-submit").click();
-  await page.waitForURL(/\/\?lecture=/);
+  await page.waitForURL(/\/app\?lecture=/);
   await expect(page.getByTestId("lecture-meta")).toHaveText(/Video · no transcript$/);
   await page.getByTestId("new-session").click();
   await page.waitForURL(/\/session\/[^/]+$/);

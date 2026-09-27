@@ -37,6 +37,8 @@ type Handler = ((ev: never) => unknown) | null;
 /** The parts of SpeechSynthesisUtterance used here. */
 export interface UtteranceLike {
   rate: number;
+  /** BCP 47 language of the text (multilingual help); left as is when not given. */
+  lang?: string;
   onstart: Handler;
   onboundary: Handler;
   onend: Handler;
@@ -83,6 +85,10 @@ export interface ReadAloudStart {
   ttsUrl: string;
   /** From AiStatus.tts: false = speak in the browser right away; undefined = ask the server. */
   serverVoice?: boolean;
+  /** BCP 47 tag of the text's language, for the browser voice (e.g. "es-US"). */
+  lang?: string;
+  /** JSON body of the POST (e.g. `{"language":"es"}`), so the server voice speaks the same language. */
+  body?: string;
 }
 
 export interface ReadAloudController {
@@ -136,7 +142,7 @@ export function createReadAloud(deps: ReadAloudDeps): ReadAloudController {
   };
 
   /** Speaks `text` with speechSynthesis; `inTap` = called synchronously from the click. */
-  const speakInBrowser = (text: string, gen: number, inTap: boolean) => {
+  const speakInBrowser = (text: string, gen: number, inTap: boolean, lang?: string) => {
     const { speech, createUtterance } = deps;
     if (!speech || !createUtterance) {
       emit("error", null, HINT_UNSUPPORTED);
@@ -144,6 +150,7 @@ export function createReadAloud(deps: ReadAloudDeps): ReadAloudController {
     }
     const utterance = createUtterance(text);
     utterance.rate = 1;
+    if (lang) utterance.lang = lang;
     let started = false;
     /** Given up on by the watchdog / an early error: its late events change nothing. */
     let abandoned = false;
@@ -192,11 +199,11 @@ export function createReadAloud(deps: ReadAloudDeps): ReadAloudController {
     }, watchdogMs);
   };
 
-  const start = ({ text, ttsUrl, serverVoice }: ReadAloudStart) => {
+  const start = ({ text, ttsUrl, serverVoice, lang, body }: ReadAloudStart) => {
     cleanup();
     const gen = generation;
     if (serverVoice === false || deps.memo.noServerVoice || browserNext) {
-      speakInBrowser(text, gen, true);
+      speakInBrowser(text, gen, true, lang);
       return;
     }
 
@@ -218,12 +225,15 @@ export function createReadAloud(deps: ReadAloudDeps): ReadAloudController {
       fellBack = true;
       browserNext = true;
       releaseAudio();
-      speakInBrowser(text, gen, false);
+      speakInBrowser(text, gen, false, lang);
     };
 
     void (async () => {
       try {
-        const res = await deps.fetch(ttsUrl, { method: "POST", signal: ctrl.signal });
+        const init: RequestInit = body
+          ? { method: "POST", signal: ctrl.signal, body, headers: { "content-type": "application/json" } }
+          : { method: "POST", signal: ctrl.signal };
+        const res = await deps.fetch(ttsUrl, init);
         if (gen !== generation) return;
         if (!res.ok) {
           if (res.status === 503) deps.memo.noServerVoice = true;

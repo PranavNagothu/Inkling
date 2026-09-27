@@ -32,7 +32,7 @@ export default function OpenGapsBanner({
     <aside
       data-testid="open-gaps-banner"
       aria-labelledby="open-gaps-title"
-      className="enter-soft absolute right-4 bottom-4 z-10 flex w-[min(24rem,calc(100%-2rem))] flex-col gap-2 rounded-lg border border-line bg-chrome/95 py-2.5 pr-1.5 pl-3.5 shadow-page backdrop-blur-sm"
+      className="enter-soft absolute right-4 bottom-4 z-10 flex w-[min(24rem,calc(100%-2rem))] flex-col gap-2 rounded-lg border border-line bg-chrome/95 py-2.5 pr-1.5 pl-3.5 shadow-page"
     >
       <div className="flex items-start gap-2">
         <p id="open-gaps-title" className="flex-1 pt-2.5 text-sm font-semibold text-balance text-ink">

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "lectureId": "demo-chain-rule",
-  "note": "DEMO_MODE fixtures for the bundled chain-rule lecture, keyed by [fromMs, toMs) of lecture time. Served offline; validated by lib/__tests__/ai-demo.test.ts with the same validators as live model output.",
+  "note": "DEMO_MODE fixtures for the bundled chain-rule lecture, keyed by [fromMs, toMs) of lecture time. Served offline; validated by lib/__tests__/ai-demo.test.ts with the same validators as live model output. i18n: hand-written Spanish and Hindi cards for the seeded Maya moments; options stay in the English order (the English answerIdx grades them) and math is identical to the English card.",
   "entries": [
     {
       "fromMs": 0,
@@ -42,6 +42,24 @@
       "fromMs": 36000,
       "toMs": 74000,
       "label": "Multiplying the inner derivative",
+      "i18n": {
+        "es": {
+          "reexplain": "Para y = (3x + 1)^2, la función exterior es u^2 y la interior es 3x + 1. La derivada exterior da 2(3x + 1). Eso es solo la mitad del trabajo: el interior cambia tres veces más rápido que x, así que multiplicas por 3. La respuesta es 6(3x + 1). Quedarse en 2(3x + 1) es el error más común con la regla de la cadena.",
+          "mcq": {
+            "q": "¿Cuál es la derivada de (5x - 2)^2?",
+            "options": ["2(5x - 2)", "10(5x - 2)", "10x", "2(5x - 2) + 5"],
+            "why": "La derivada exterior 2(5x - 2) se multiplica por la derivada interior, 5. Olvidar ese factor da 2(5x - 2); sumarlo en vez de multiplicarlo también es incorrecto."
+          }
+        },
+        "hi": {
+          "reexplain": "y = (3x + 1)^2 में बाहरी फ़ंक्शन u^2 है और अंदरूनी फ़ंक्शन 3x + 1 है। बाहरी डेरिवेटिव से 2(3x + 1) मिलता है। पर यह आधा ही काम है: अंदर वाला हिस्सा x से तीन गुना तेज़ी से बदलता है, इसलिए 3 से गुणा कीजिए। उत्तर 6(3x + 1) है। 2(3x + 1) पर रुक जाना चेन रूल की सबसे आम गलती है।",
+          "mcq": {
+            "q": "(5x - 2)^2 का डेरिवेटिव क्या है?",
+            "options": ["2(5x - 2)", "10(5x - 2)", "10x", "2(5x - 2) + 5"],
+            "why": "बाहरी डेरिवेटिव 2(5x - 2) को अंदरूनी डेरिवेटिव 5 से गुणा किया जाता है। वह गुणनखंड भूल जाने पर 2(5x - 2) मिलता है; उसे गुणा करने के बजाय जोड़ना भी गलत है।"
+          }
+        }
+      },
       "help": {
         "reexplain": "For y = (3x + 1)^2, the outer function is u^2 and the inner is 3x + 1. The outer derivative gives 2(3x + 1). That is only half the job: the inside changes three times as fast as x, so you multiply by 3. The answer is 6(3x + 1). Stopping at 2(3x + 1) is the most common chain rule mistake.",
         "mcq": {
@@ -77,6 +95,24 @@
       "fromMs": 87000,
       "toMs": 107000,
       "label": "Sine of x squared",
+      "i18n": {
+        "es": {
+          "reexplain": "En sin(x^2), el seno es la función exterior y x^2 es la interior. Al derivar la parte exterior obtienes cos(x^2), sin tocar el interior. Eso es solo la mitad de la regla de la cadena: el interior también cambia, a razón de 2x, así que multiplicas por eso. La derivada es cos(x^2) por 2x. Quedarse en cos(x^2) olvida la derivada interior.",
+          "mcq": {
+            "q": "¿Cuál es la derivada de sin(x^2)?",
+            "options": ["cos(x^2)", "2x cos(x)", "2x cos(x^2)", "cos(2x)"],
+            "why": "La derivada exterior cos(x^2) se multiplica por la derivada interior 2x. Escribir solo cos(x^2) olvida la derivada interior; cos(x) pierde el interior; cos(2x) deriva la parte equivocada."
+          }
+        },
+        "hi": {
+          "reexplain": "sin(x^2) में साइन बाहरी फ़ंक्शन है और x^2 अंदरूनी। बाहरी हिस्से का डेरिवेटिव लेने पर cos(x^2) मिलता है, और अंदर वाला हिस्सा वैसा ही रहता है। यह चेन रूल का आधा ही काम है: अंदर वाला हिस्सा भी 2x की दर से बदल रहा है, इसलिए उससे गुणा कीजिए। डेरिवेटिव cos(x^2) गुणा 2x है। cos(x^2) पर रुक जाने का मतलब है अंदरूनी डेरिवेटिव भूल जाना।",
+          "mcq": {
+            "q": "sin(x^2) का डेरिवेटिव क्या है?",
+            "options": ["cos(x^2)", "2x cos(x)", "2x cos(x^2)", "cos(2x)"],
+            "why": "बाहरी डेरिवेटिव cos(x^2) को अंदरूनी डेरिवेटिव 2x से गुणा किया जाता है। सिर्फ़ cos(x^2) लिखने से अंदरूनी डेरिवेटिव छूट जाता है; cos(x) अंदर का हिस्सा खो देता है; cos(2x) गलत हिस्से का डेरिवेटिव लेता है।"
+          }
+        }
+      },
       "help": {
         "reexplain": "For sin(x^2), sine is the outer function and x^2 is the inner one. Differentiating the outside gives cos(x^2), with the inside left untouched. That is only half of the chain rule: the inside is changing too, at rate 2x, so you multiply by it. The derivative is cos(x^2) times 2x. Stopping at cos(x^2) forgets the inner derivative.",
         "mcq": {
@@ -194,6 +230,24 @@
       "fromMs": 222000,
       "toMs": 288000,
       "label": "Chain versus product rule",
+      "i18n": {
+        "es": {
+          "reexplain": "Pregúntate dónde está x. Si x está dentro de algo, como en sin(x^2), usa la regla de la cadena. Si dos funciones de x están una junto a otra, multiplicadas, como x sin(x), usa la regla del producto. Algunos problemas necesitan ambas: en x^2 e^(3x), la regla del producto lo separa y la regla de la cadena se encarga de e^(3x), que da 3e^(3x).",
+          "mcq": {
+            "q": "¿Qué reglas necesita la derivada de x^2 e^(3x)?",
+            "options": ["Solo la regla de la cadena", "Solo la regla del producto", "Tanto la regla del producto como la de la cadena", "Ninguna: usa la regla de la potencia"],
+            "why": "x^2 y e^(3x) se multiplican, así que se aplica la regla del producto, y e^(3x) tiene 3x dentro, así que su derivada necesita la regla de la cadena."
+          }
+        },
+        "hi": {
+          "reexplain": "देखिए कि x कहाँ है। अगर x किसी चीज़ के अंदर है, जैसे sin(x^2) में, तो चेन रूल लगाइए। अगर x के दो फ़ंक्शन एक-दूसरे के बगल में गुणा हो रहे हैं, जैसे x sin(x), तो प्रोडक्ट रूल लगाइए। कुछ सवालों में दोनों चाहिए: x^2 e^(3x) में प्रोडक्ट रूल उसे दो हिस्सों में बाँटता है, और चेन रूल e^(3x) को सँभालता है, जिससे 3e^(3x) मिलता है।",
+          "mcq": {
+            "q": "x^2 e^(3x) के डेरिवेटिव के लिए कौन-से नियम चाहिए?",
+            "options": ["सिर्फ़ चेन रूल", "सिर्फ़ प्रोडक्ट रूल", "प्रोडक्ट रूल और चेन रूल दोनों", "कोई नहीं: पावर रूल लगाइए"],
+            "why": "x^2 और e^(3x) आपस में गुणा हो रहे हैं, इसलिए प्रोडक्ट रूल लगता है, और e^(3x) के अंदर 3x है, इसलिए उसके डेरिवेटिव में चेन रूल चाहिए।"
+          }
+        }
+      },
       "help": {
         "reexplain": "Ask where x sits. If x is inside something, like sin(x^2), use the chain rule. If two functions of x sit next to each other, multiplied, like x sin(x), use the product rule. Some problems need both: for x^2 e^(3x), the product rule splits it, and the chain rule handles e^(3x), giving 3e^(3x).",
         "mcq": {

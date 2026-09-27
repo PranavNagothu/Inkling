@@ -10,7 +10,7 @@ type Box = { x: number; y: number; width: number; height: number };
 type SessionData = { strokes: Stroke[]; eraseEvents: EraseEvent[] };
 
 async function newSession(page: Page) {
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByTestId("new-session").click();
   await page.waitForURL(/\/session\/[^/]+$/);
   const sessionId = page.url().split("/session/")[1];
@@ -54,7 +54,7 @@ const scribbleOverWord = (page: Page, box: Box) => drawZigzag(page, box, 190, 37
 
 type Pixels = { ink: number; ghost: number };
 
-/** Ink-dark and vermilion pixel counts in a CSS-px rectangle centred on (cx, cy) of a canvas. */
+/** Ink-dark and teal ghost-ink pixel counts in a CSS-px rectangle centred on (cx, cy) of a canvas. */
 async function pixelsAt(page: Page, cx: number, cy: number, halfW: number, halfH: number, testId = "ink-canvas") {
   return page.getByTestId(testId).evaluate(
     (el, [cx, cy, hw, hh]): Pixels => {
@@ -68,7 +68,7 @@ async function pixelsAt(page: Page, cx: number, cy: number, halfW: number, halfH
       for (let i = 0; i < data.length; i += 4) {
         const [r, g, b, a] = [data[i], data[i + 1], data[i + 2], data[i + 3]];
         if (a > 150 && r < 90 && g < 90 && b < 90) ink++;
-        if (a > 20 && r > 150 && g < 120 && b < 120) ghost++;
+        if (a > 20 && r < 100 && g > 110 && b < g + 8 && g - r > 60) ghost++;
       }
       return { ink, ghost };
     },
@@ -122,7 +122,7 @@ test("scribbling over a word erases it into ghost ink, with a toast, and it pers
   // Ghost off: once the fade finishes the area holds no ink at all.
   await expect.poll(() => wordPixels(page)).toEqual({ ink: 0, ghost: 0 });
 
-  // Ghost on: the word and the zig-zag show in vermilion ghost ink, still no black ink.
+  // Ghost on: the word and the zig-zag show in teal ghost ink, still no black ink.
   await page.getByTestId("ghost-toggle").check();
   await expect(page.getByTestId("ink-canvas")).toHaveAttribute("data-ghost", "on");
   const ghostOn = await wordPixels(page);

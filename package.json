@@ -6,19 +6,25 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint --ignore-pattern 'landing/**' --ignore-pattern '.next-*/**'",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "seed:demo": "tsx --tsconfig scripts/tsconfig.json scripts/seed-demo.ts",
     "demo": "node scripts/demo.mjs"
   },
   "dependencies": {
+    "@paper-design/shaders-react": "0.0.81",
     "better-sqlite3": "^13.0.3",
+    "clsx": "^2.1.1",
+    "framer-motion": "13.4.4",
+    "motion": "13.4.4",
     "next": "16.3.6",
+    "pdf-lib": "1.17.1",
     "pdfjs-dist": "6.3.289",
     "pg": "^8.23.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
@@ -31,7 +37,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
-    "pdf-lib": "1.17.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",

@@ -146,6 +146,11 @@ export interface Db {
   getLecture(id: string): Promise<LectureRecord | null>;
   /** Replaces a lecture's transcript (e.g. after Whisper). Returns null for an unknown lecture. */
   setLectureTranscript(id: string, words: TranscriptWord[], source: TranscriptSource): Promise<Lecture | null>;
+  /**
+   * Updates a lecture's media fields (a Live lecture's recording and length); omitted fields keep
+   * their value. Returns null for an unknown lecture.
+   */
+  setLectureMedia(id: string, patch: LectureMediaPatch): Promise<Lecture | null>;
 
   /** Stores a Notability PDF import as the session's current one (earlier imports stay as history). */
   addNotabilityImport(input: NewNotabilityImport): Promise<NotabilityImport>;
@@ -245,6 +250,14 @@ export interface NewLecture {
   durationMs: number;
   words: TranscriptWord[];
   transcriptSource: TranscriptSource;
+}
+
+export interface LectureMediaPatch {
+  /** Relative to the project root; server-generated, never from the client. */
+  mediaPath?: string;
+  mediaType?: LectureMediaType;
+  mime?: string;
+  durationMs?: number;
 }
 
 export interface LectureRecord {
@@ -481,17 +494,22 @@ export const toEvent = (r: EventRow): TimelineEvent => {
   return e;
 };
 
-export const toLecture = (r: LectureRow): Lecture => ({
-  id: r.id,
-  courseId: r.course_id,
-  title: r.title,
-  mediaType: r.media_type as LectureMediaType,
-  mime: r.mime,
-  durationMs: r.duration_ms,
-  transcriptSource: r.transcript_source as TranscriptSource,
-  wordCount: r.word_count,
-  createdAtIso: r.created_at,
-});
+export const toLecture = (r: LectureRow): Lecture => {
+  const lecture: Lecture = {
+    id: r.id,
+    courseId: r.course_id,
+    title: r.title,
+    mediaType: r.media_type as LectureMediaType,
+    mime: r.mime,
+    durationMs: r.duration_ms,
+    transcriptSource: r.transcript_source as TranscriptSource,
+    wordCount: r.word_count,
+    createdAtIso: r.created_at,
+  };
+  // A Live lecture before its recording exists (the media path itself never leaves the server).
+  if (r.transcript_source === 'live' && !r.media_path) lecture.live = true;
+  return lecture;
+};
 
 export const toNotabilityImport = (r: NotabilityRow): NotabilityImport => ({
   id: r.id,

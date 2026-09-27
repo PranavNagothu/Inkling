@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { languageInfo, type LanguageCode } from "@/lib/ai/languages";
 import { createReadAloud, type ReadAloudController, type ReadAloudView } from "@/lib/readAloud";
 
 export type { ReadAloudState } from "@/lib/readAloud";
@@ -26,23 +27,41 @@ function browserController(onChange: (view: ReadAloudView) => void): ReadAloudCo
   });
 }
 
+export interface ReadAloudOptions {
+  /** Stops playback when it changes (the moment / session being read). */
+  resetKey: string;
+  text: string;
+  /** POST endpoint returning audio/mpeg (503 without a server voice). */
+  ttsUrl: string;
+  /** AiStatus.tts: false = speak in the browser right away; undefined = ask the server first. */
+  serverVoice?: boolean;
+  /** The language `text` is in: sent to the server voice and set on the browser utterance. */
+  language?: LanguageCode;
+}
+
 /**
- * Reads a moment's re-explanation aloud: the server's voice (ElevenLabs / OpenAI TTS, cached mp3)
- * when configured, otherwise the browser's speechSynthesis — see lib/readAloud for the iPad rules.
- * `serverVoice` is AiStatus.tts (known from the page, so the first tap needs no round trip);
- * `voice` names what was used and `hint` explains an error.
+ * Reads text aloud: the server's voice (ElevenLabs / OpenAI TTS, cached mp3) when configured,
+ * otherwise the browser's speechSynthesis — see lib/readAloud for the iPad rules. `serverVoice`
+ * is known from the page, so the first tap needs no round trip; `voice` names what was used and
+ * `hint` explains an error. Used for a moment's explanation and for the session recap.
  */
-export function useReadAloud(eventId: string, text: string, serverVoice?: boolean) {
+export function useReadAloud({ resetKey, text, ttsUrl, serverVoice, language = "en" }: ReadAloudOptions) {
   const [view, setView] = useState<ReadAloudView>(IDLE);
   const ctrlRef = useRef<ReadAloudController | null>(null);
 
-  useEffect(() => () => ctrlRef.current?.cancel(), [eventId]);
+  useEffect(() => () => ctrlRef.current?.cancel(), [resetKey]);
 
   // Synchronous from the click handler all the way to speak()/play().
   const start = useCallback(() => {
     ctrlRef.current ??= browserController(setView);
-    ctrlRef.current.start({ text, ttsUrl: `/api/events/${encodeURIComponent(eventId)}/tts`, serverVoice });
-  }, [eventId, text, serverVoice]);
+    ctrlRef.current.start({
+      text,
+      ttsUrl,
+      serverVoice,
+      lang: languageInfo(language).bcp47,
+      body: JSON.stringify({ language }),
+    });
+  }, [text, ttsUrl, serverVoice, language]);
 
   const stop = useCallback(() => {
     if (ctrlRef.current) ctrlRef.current.stop();

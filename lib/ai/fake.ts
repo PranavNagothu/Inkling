@@ -5,6 +5,7 @@ import "server-only";
 // always gets the same card. Never touches the network.
 import type { RevisionReading } from '../types';
 import { normalizeForKey, sha256, stableStringify } from './cache';
+import type { LanguageCode } from './languages';
 import { cleanUntrusted } from './prompts';
 import type { AiProvider, CallOptions, HelpCardCore, HelpContext, RevisionInput } from './types';
 import { truncateWords } from './validate';
@@ -73,10 +74,9 @@ export function createFakeProvider(): AiProvider {
     async readRevision(input: RevisionInput, opts?: CallOptions): Promise<RevisionReading> {
       checkAbort(opts);
       const said = firstWords(input.excerpt, 6) || 'this step';
-      const size = (url: string) => Math.max(1, Math.round((url.length * 3) / 4 / 1024));
       return {
-        before: `a first attempt at this step (${size(input.beforePng)} KB of ink)`,
-        after: `a rewritten version of it (${size(input.afterPng)} KB of ink)`,
+        before: "a first attempt at this step",
+        after: "a rewritten version of it",
         misconception: truncateWords(`Mixed up a step while the lecture said “${said}”.`, 25),
         conceptLabel: fakeLabel(input.excerpt),
         cosmetic: false,
@@ -85,6 +85,20 @@ export function createFakeProvider(): AiProvider {
     async labelConcept(segmentText: string, opts?: CallOptions): Promise<string> {
       checkAbort(opts);
       return fakeLabel(segmentText);
+    },
+    // "Translations" are the English text tagged with the language ("[es] …"): deterministic, and
+    // easy for tests to see which language was served. Options keep their order and answerIdx.
+    async localizeHelp(card: HelpCardCore, language: LanguageCode, opts?: CallOptions): Promise<HelpCardCore> {
+      checkAbort(opts);
+      const tag = (t: string) => `[${language}] ${t}`;
+      return {
+        reexplain: tag(card.reexplain),
+        mcq: { q: tag(card.mcq.q), options: card.mcq.options.map(tag), answerIdx: card.mcq.answerIdx, why: tag(card.mcq.why) },
+      };
+    },
+    async polishRecap(text: string, language: LanguageCode, opts?: CallOptions): Promise<string> {
+      checkAbort(opts);
+      return `[${language}] ${text}`;
     },
   };
 }

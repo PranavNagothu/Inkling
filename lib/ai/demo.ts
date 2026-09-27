@@ -5,7 +5,15 @@ import "server-only";
 // the demo scenario's moments whatever session they come from. Served offline; nothing here calls
 // a model.
 import type { HelpCard, RevisionReading } from '../types';
+import { parseLanguage, type LanguageCode } from './languages';
 import type { HelpCardCore } from './types';
+import { validateLocalizedHelpCard } from './validate';
+
+/** A hand-written translation of an entry's card: no answerIdx (the English one grades it). */
+export interface DemoTranslation {
+  reexplain: string;
+  mcq: { q: string; options: string[]; why: string };
+}
 
 export interface DemoEntry {
   /** [fromMs, toMs) of the demo lecture. */
@@ -14,6 +22,8 @@ export interface DemoEntry {
   label: string;
   help: HelpCardCore;
   revision?: RevisionReading;
+  /** Translations of `help` (Spanish and Hindi for the seeded moments). */
+  i18n?: Partial<Record<LanguageCode, DemoTranslation>>;
 }
 
 export interface DemoFixtures {
@@ -35,7 +45,8 @@ export function parseDemoFixtures(raw: unknown): DemoFixtures {
       typeof e.toMs !== 'number' ||
       typeof e.label !== 'string' ||
       !isObj(e.help) ||
-      (e.revision !== undefined && !isObj(e.revision))
+      (e.revision !== undefined && !isObj(e.revision)) ||
+      (e.i18n !== undefined && (!isObj(e.i18n) || !Object.keys(e.i18n).every((k) => parseLanguage(k) && k !== 'en')))
     ) {
       throw new Error(`demo fixtures: entry ${i} is malformed`);
     }
@@ -50,3 +61,14 @@ export function demoEntryFor(fixtures: DemoFixtures, lectureId: string, lectureM
 }
 
 export const demoHelpCard = (entry: DemoEntry): HelpCard => ({ ...entry.help, source: 'demo', provider: 'demo' });
+
+/**
+ * The entry's card in `language`, checked like a model's translation (4 options in the English
+ * order, math intact) and graded by the English answerIdx; null when there is none.
+ */
+export function demoTranslation(entry: DemoEntry, language: LanguageCode): HelpCardCore | null {
+  const t = entry.i18n?.[language];
+  if (!t) return null;
+  const v = validateLocalizedHelpCard(t, entry.help);
+  return v.ok ? v.value : null;
+}

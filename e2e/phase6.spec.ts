@@ -70,7 +70,7 @@ test("a gap follows you: home → progress → next session's banner → calm re
   expect(gap.conceptId).toMatch(new RegExp(`^${lecture.id}@\\d+$`));
   expect(gap.conceptLabel).toBeTruthy();
 
-  await page.goto("/");
+  await page.goto("/app");
   await expect(page.getByTestId("open-gaps-count")).toHaveText(String(openBefore + 1));
   await page.getByTestId("open-gaps-link").click();
   await page.waitForURL(/\/progress$/);
@@ -143,7 +143,7 @@ test("a gap follows you: home → progress → next session's banner → calm re
   await expect(page.getByTestId("self-reopen")).toBeVisible();
 
   // Home count is back where it started.
-  await page.goto("/");
+  await page.goto("/app");
   await expect(page.getByTestId("open-gaps-count")).toHaveText(String(openBefore));
 });
 

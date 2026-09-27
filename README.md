@@ -17,8 +17,14 @@ Built solo at HackGT 13.
 ```bash
 npm install
 cp .env.local.example .env.local   # optional: AI / voice keys, Postgres URL (everything works without)
-npm run dev                          # http://localhost:3000
+npm run dev                          # http://localhost:3000 → /welcome
 ```
+
+One site: `/welcome` is the marketing page (with the "Ask Inkling" assistant, `POST /api/ask`), `/app`
+is the app's home, and `/` redirects to `/welcome`. The two have separate root layouts and stylesheets
+(`app/(marketing)` and `app/(product)`); the other app routes (`/session/…`, `/review/…`, `/compare/…`,
+`/progress`, …) and every API under `/api` are unchanged. `landing/` is the former standalone
+marketing site, kept for reference only (not built, typechecked or linted).
 
 Node 22+. Everything is stored in a local SQLite file (`data/inkling.db`) unless `DATABASE_URL` is set.
 
@@ -88,9 +94,20 @@ All optional; see `.env.local.example` for details. Keys are read on the server 
 
 ### Notability
 
-_(TODO — fill in how Notability Pro was used while building Inkling — e.g. the design sketches, the
-lecture notes the ghost-ink idea came from, the PDF exports used on the compare screen — with
-screenshots.)_
+Notability Pro was my research and design notebook during the build. I recorded the idea and the
+prior-art check that led to Inkling there, wrote up and drew the pipeline (capture → save → analyze →
+re-teach → review → compare) on the canvas, and sketched the core idea: an erased stroke kept as
+ghost ink. To study the lecture, I imported MIT 18.01 Lecture 4 from YouTube, read it with Smart
+Notes, and used Note Chat to confirm the typical chain-rule mistake (`sin(x²)` → `cos(x²)`, missing
+the inner `2x`), which is the correction the demo is built around.
+
+| Idea and prior-art check | Architecture notes |
+| --- | --- |
+| ![Inkling idea and problem note in Notability](notability-screenshots/01-idea-and-problem.png) | ![Inkling architecture note in Notability](notability-screenshots/02-architecture.png) |
+| **Pipeline and ghost-ink sketch on the canvas** | **MIT 18.01 Lecture 4: YouTube-to-notes and Smart Notes** |
+| ![Architecture diagram drawn on the Notability canvas](notability-screenshots/05-architecture-diagram-canvas.png) | ![MIT 18.01 lecture transcript with Smart Notes in Notability](notability-screenshots/03-youtube-lecture-smart-notes.png) |
+| **Note Chat: the chain-rule mistake** | |
+| ![Note Chat answering where students get confused about the chain rule](notability-screenshots/04-note-chat-chain-rule-mistake.png) | |
 
 In the app: **Compare with Notability** takes a Notability PDF export of the same notes and lays
 Inkling's process over the final page (side by side, or an overlay slider), with the count of what the
@@ -172,11 +189,13 @@ server), the same queries run with `date_bin` on a plain table and give identica
 npx tsc --noEmit && npm run lint
 npx vitest run                     # unit + integration, on SQLite and on Postgres (embedded PGlite)
 npx playwright test                # e2e: dev server on :3100 (SQLite) + the production demo on :3101
+                                   # (projects: chromium, ai, demo, landing — /welcome with LANDING_AI_DISABLED=1)
 INKLING_TEST_PG=1 npx playwright test   # the same e2e suite on the Postgres repository (PGlite)
 TIMESCALE_TEST_URL=<throwaway service URL> npx vitest run lib/__tests__/dbTimescale.test.ts
 ```
 
-Playwright starts its own servers (ports 3100 and 3101 must be free). The `demo` project seeds a fresh
+Playwright starts its own servers (ports 3100 and 3101 must be free); they build into their own
+folders (`INKLING_DIST_DIR=.next-e2e`, `.next-e2e-demo`), so they can run next to an everyday `npm run dev`. The `demo` project seeds a fresh
 database, builds for production when the source changed, and runs `e2e/demo.spec.ts` offline;
 screenshots of each stop go to `screenshots/demo-*.png`.
 

@@ -24,7 +24,7 @@ import { ArrowRightIcon, CheckIcon, CloseIcon, CompareIcon, ReplayIcon, StopIcon
 import RevisionReading from "./RevisionReading";
 import { useReplay } from "./useReplay";
 import { MomentGlyph } from "./Timeline";
-import { iconBtn } from "./ui";
+import { btnPrimary, btnSecondary, iconBtn } from "./ui";
 
 const TITLE_CLASS: Record<TimelineEventType, string> = {
   misconception_corrected: "text-corrected-strong",
@@ -78,7 +78,7 @@ function StrokeCrop({
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <h3 className="text-xs font-medium tracking-wide text-ink-subtle uppercase">{children}</h3>;
+  return <h3 className="text-xs font-bold tracking-wide text-ink-muted uppercase">{children}</h3>;
 }
 
 /**
@@ -294,7 +294,7 @@ function GapProgress({ event, onSelfAction }: { event: TimelineEvent; onSelfActi
               onClick={() => void act("self")}
               disabled={pending !== null}
               aria-busy={pending === "self"}
-              className="press inline-flex min-h-11 items-center gap-2 rounded-pill bg-breakthrough-strong px-4 text-sm font-semibold text-white hover:bg-breakthrough-strong/90 disabled:opacity-60"
+              className={btnPrimary}
             >
               <CheckIcon size={16} />
               {pending === "self" ? "Saving…" : "I get it now"}
@@ -306,7 +306,7 @@ function GapProgress({ event, onSelfAction }: { event: TimelineEvent; onSelfActi
               onClick={() => void act("reopen")}
               disabled={pending !== null}
               aria-busy={pending === "reopen"}
-              className="press inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong bg-chrome px-4 text-sm font-semibold text-ink hover:bg-chrome-hover disabled:opacity-60"
+              className={btnSecondary}
             >
               {pending === "reopen" ? "Saving…" : "Still confused"}
             </button>
@@ -386,7 +386,7 @@ export default function MomentDetail({
             ref={titleRef}
             tabIndex={-1}
             data-testid="moment-title"
-            className={`flex items-center gap-2 text-base leading-tight font-semibold text-balance outline-none focus-visible:shadow-[var(--focus-ring)] ${TITLE_CLASS[event.type]}`}
+            className={`-mx-1.5 flex items-center gap-2 rounded-sm px-1.5 py-0.5 text-[17px] leading-tight font-bold tracking-tight text-balance outline-none focus-visible:shadow-[var(--focus-ring)] ${TITLE_CLASS[event.type]}`}
           >
             <MomentGlyph type={event.type} size={14} className="shrink-0" />
             {meta.label}
@@ -405,7 +405,7 @@ export default function MomentDetail({
             ) : (
               <span
                 data-testid="moment-status"
-                className="inline-flex items-center gap-1 rounded-pill bg-breakthrough-soft px-2 py-0.5 text-xs font-semibold text-breakthrough-strong"
+                className="inline-flex items-center gap-1 rounded-pill bg-ok-soft px-2 py-0.5 text-xs font-semibold text-ok-strong"
               >
                 <CheckIcon size={12} />
                 Resolved

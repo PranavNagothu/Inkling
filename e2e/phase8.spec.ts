@@ -11,7 +11,7 @@ type Box = { x: number; y: number; width: number; height: number };
 type SessionData = { strokes: Stroke[]; eraseEvents: EraseEvent[] };
 
 async function newSession(page: Page) {
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByTestId("new-session").click();
   await page.waitForURL(/\/session\/[^/]+$/);
   const sessionId = page.url().split("/session/")[1];
@@ -78,7 +78,7 @@ test("the stroke counter counts lines drawn, on the capture bar and on the home 
   await expect(page.getByTestId("stroke-counter")).toHaveText("2 strokes · 1 erased part");
 
   await saved(page, sessionId);
-  await page.goto("/");
+  await page.goto("/app");
   const count = page.locator(`a[href="/session/${sessionId}"] [data-testid="session-stroke-count"]`);
   await expect(count).toHaveAttribute("data-drawn", "2");
   await expect(count).toHaveAttribute("data-erased-parts", "1");

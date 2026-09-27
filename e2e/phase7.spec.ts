@@ -74,13 +74,13 @@ async function inkedPixels(page: Page, testId: string) {
   });
 }
 
-/** Pixels in the ghost-ink vermilion (#e4572e, drawn at 40 % over transparent). */
+/** Pixels in the teal ghost ink (#0d9488, drawn at 50 % over transparent). */
 async function ghostPixels(page: Page) {
   return page.getByTestId("process-canvas").evaluate((el) => {
     const c = el as HTMLCanvasElement;
     const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
     let n = 0;
-    for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 30 && d[i] > 180 && d[i + 1] < 130 && d[i + 2] < 90) n++;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 30 && d[i] < 100 && d[i + 1] > 110 && d[i + 2] < d[i + 1] + 8 && d[i + 1] - d[i] > 60) n++;
     return n;
   });
 }

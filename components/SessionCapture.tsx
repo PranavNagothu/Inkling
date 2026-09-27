@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { EraseEvent, Lecture, PointerKind, Point, Session, Stroke, Tool, TranscriptWord } from "@/lib/types";
 import { buildStroke, inkCounts, inkCountsLabel, newId } from "@/lib/ink";
 import { undoEraseGesture } from "@/lib/eraseUndo";
 import { InkSaver, type SaveStatus } from "@/lib/inkSaver";
 import { lectureMediaUrl } from "@/lib/media";
+import { cuesToLiveWords } from "@/lib/liveLecture";
 import { applyScribbleOut, undoScribbleOut, type ScribbleOut } from "@/lib/scribble";
 import {
   STRIKE_CONFIG,
@@ -20,6 +21,8 @@ import HesitationMeter from "./HesitationMeter";
 import InkCanvas from "./InkCanvas";
 import LectureMedia from "./LectureMedia";
 import LecturePlayer from "./LecturePlayer";
+import { LiveLectureBar, LiveTranscriptPanel } from "./LiveLectureBar";
+import { useLiveCapture, type FinishResult } from "./useLiveCapture";
 import OpenGapsBanner from "./OpenGapsBanner";
 import type { ProgressThread } from "@/lib/progress";
 import TranscriptPanel from "./TranscriptPanel";
@@ -46,8 +49,8 @@ const STATUS_DOT: Record<SaveStatus, string> = {
 const AUTOSAVE_MS = 2000;
 
 const segBtn = (active: boolean) =>
-  `press inline-flex min-h-11 items-center gap-2 rounded-[8px] px-3.5 text-sm font-medium ${
-    active ? "bg-chrome text-ink shadow-raised" : "text-ink-muted hover:text-ink"
+  `press inline-flex min-h-11 items-center gap-2 rounded-pill px-4 text-sm font-semibold ${
+    active ? "bg-ink text-white shadow-raised" : "text-ink-muted hover:bg-chrome hover:text-ink"
   }`;
 
 /**
@@ -72,6 +75,16 @@ interface Props {
   initialStrokes: Stroke[];
   /** Gaps still open from earlier sessions of this lecture (the "Jump to" banner). */
   openGaps?: ProgressThread[];
+  /** Live lectures can capture here (false in DEMO_MODE: shown, but disabled with a note). */
+  liveAvailable?: boolean;
+}
+
+/** Where a Live lecture's clock starts: after everything already captured for it (0 when new). */
+function liveOffsetMs(lecture: Lecture, words: TranscriptWord[], strokes: Stroke[]): number {
+  let last = lecture.durationMs;
+  for (const w of words) last = Math.max(last, w.endMs);
+  for (const s of strokes) last = Math.max(last, s.endMs, s.erasedAtMs ?? 0);
+  return Math.ceil(last);
 }
 
 export default function SessionCapture({
@@ -81,17 +94,25 @@ export default function SessionCapture({
   aiConfigured,
   initialStrokes,
   openGaps = [],
+  liveAvailable = true,
 }: Props) {
   const router = useRouter();
   const audioRef = useRef<HTMLMediaElement>(null);
-  const [transcriptOpen, setTranscriptOpen] = useState(false);
+  // A Live lecture (no recording yet): the microphone and the browser's speech recognition stand
+  // in for the media player; the rest of capture is the same.
+  const isLive = lecture.live === true;
+  const [liveOffset] = useState(() => (isLive ? liveOffsetMs(lecture, initialWords, initialStrokes) : 0));
+  const live = useLiveCapture({ lectureId: lecture.id, enabled: isLive && liveAvailable, offsetMs: liveOffset });
+  const liveFinishRef = useRef<Promise<FinishResult> | null>(null);
+  const recordingUploadedRef = useRef(false);
+  const [transcriptOpen, setTranscriptOpen] = useState(isLive);
   const [words, setWords] = useState<TranscriptWord[]>(initialWords);
   const closeTranscript = useCallback(() => setTranscriptOpen(false), []);
   const [strokes, setStrokes] = useState<Stroke[]>(initialStrokes);
   const [tool, setTool] = useState<Tool>("pen");
   const [showGhost, setShowGhost] = useState(false);
   const [status, setStatus] = useState<SaveStatus>("saved");
-  const [ending, setEnding] = useState<"idle" | "saving" | "analyzing">("idle");
+  const [ending, setEnding] = useState<"idle" | "saving" | "uploading" | "analyzing">("idle");
   // Why "End session" could not finish (shown with a Retry next to the button).
   const [endError, setEndError] = useState<string | null>(null);
 
@@ -117,7 +138,16 @@ export default function SessionCapture({
     return () => clearTimeout(timer);
   }, [scribbleToast]);
 
-  const getLectureMs = useCallback(() => Math.round((audioRef.current?.currentTime ?? 0) * 1000), []);
+  const liveGetMs = live.getMs;
+  const getLectureMs = useCallback(
+    () => (isLive ? liveGetMs() : Math.round((audioRef.current?.currentTime ?? 0) * 1000)),
+    [isLive, liveGetMs],
+  );
+  // What the hesitation meter reads: the stored transcript plus, live, the words heard so far.
+  const meterWords = useMemo(
+    () => (isLive && live.cues.length ? [...words, ...cuesToLiveWords(live.cues)] : words),
+    [isLive, live.cues, words],
+  );
 
   const commit = (next: Stroke[], changedIds: string[], events: EraseEvent[] = []) => {
     strokesRef.current = next;
@@ -258,6 +288,17 @@ export default function SessionCapture({
     setEnding("saving");
     setEndError(null);
     audioRef.current?.pause();
+    // Live: stop listening and recording (once, even if End is retried), then save the transcript.
+    let liveResult: FinishResult | null = null;
+    if (isLive && liveAvailable) {
+      liveFinishRef.current ??= live.finish();
+      liveResult = await liveFinishRef.current;
+      if (!(await live.flushCues())) {
+        setEnding("idle");
+        setEndError("Couldn’t save the live transcript — check your connection. Your notes are still here.");
+        return;
+      }
+    }
     const saver = saverRef.current!;
     // An explicit End also re-sends anything the server refused earlier; a network blip gets a
     // second chance. Ink written while saving is sent too.
@@ -274,6 +315,22 @@ export default function SessionCapture({
       );
       return;
     }
+    // The microphone recording becomes the lecture's media (Replay 20 s). Best effort: the notes
+    // and transcript are already saved, so a failed upload never blocks the review.
+    if (liveResult?.recording && !recordingUploadedRef.current) {
+      setEnding("uploading");
+      try {
+        const res = await fetch(
+          `/api/lectures/${encodeURIComponent(lecture.id)}/recording?durationMs=${liveResult.durationMs}`,
+          { method: "POST", headers: { "Content-Type": liveResult.recording.type || "audio/webm" }, body: liveResult.recording },
+        );
+        if (!res.ok) console.error(`Live recording upload failed: HTTP ${res.status}`);
+        recordingUploadedRef.current = true;
+      } catch (err) {
+        console.error("Live recording upload failed", err);
+        recordingUploadedRef.current = true;
+      }
+    }
     // Build the learning timeline before showing the review. Best effort: if this fails, the
     // review page notices the missing analysis and runs it itself.
     setEnding("analyzing");
@@ -289,16 +346,44 @@ export default function SessionCapture({
   // Lines the student drew (not stored pieces): "1 stroke · 1 erased part" (lib/ink inkCounts).
   const countLabel = inkCountsLabel(inkCounts(strokes));
 
+  const transcriptToggle = (
+    <button
+      type="button"
+      data-testid="transcript-toggle"
+      aria-pressed={transcriptOpen}
+      aria-controls="transcript-panel"
+      onClick={() => setTranscriptOpen((o) => !o)}
+      className={`press inline-flex min-h-11 shrink-0 items-center gap-2 rounded-pill px-3 text-sm font-medium ${
+        transcriptOpen ? "bg-accent-soft text-accent" : "text-ink-muted hover:bg-chrome-hover hover:text-ink"
+      }`}
+    >
+      <TranscriptIcon size={18} />
+      <span className="hidden sm:inline">Transcript</span>
+    </button>
+  );
+  const playerAside = (
+    <div className="flex shrink-0 items-center gap-1 pr-1">
+      <HesitationMeter strokes={strokes} words={meterWords} getLectureMs={getLectureMs} />
+      <span data-testid="stroke-counter" className="hidden text-sm tabular-nums text-ink-subtle lg:block">
+        {countLabel.strokes}
+        {countLabel.erased ? <span className="text-ghost-strong"> · {countLabel.erased}</span> : null}
+      </span>
+    </div>
+  );
+
   return (
     <div className="flex h-dvh flex-col overflow-hidden overscroll-none">
       <TopBar label="Note toolbar">
         <div className="flex min-w-[10rem] flex-1 items-center gap-1">
           <BackLink />
-          <h1 className="truncate text-base font-semibold text-ink">{session.title}</h1>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-bold tracking-wide text-accent-press uppercase">Notes</p>
+            <h1 className="truncate text-base leading-tight font-bold tracking-tight text-ink">{session.title}</h1>
+          </div>
         </div>
 
-        <div className="order-last flex basis-full items-center gap-1.5 pl-1 lg:order-none lg:basis-auto lg:pl-0">
-          <div role="group" aria-label="Tool" className="inline-flex rounded-md bg-chrome-press p-0.5">
+        <div className="order-last flex basis-full flex-wrap items-center gap-1.5 pl-1 lg:order-none lg:basis-auto lg:pl-0">
+          <div role="group" aria-label="Tool" className="inline-flex gap-0.5 rounded-pill border border-line bg-chrome-press/70 p-0.5">
             <button
               type="button"
               data-testid="tool-pen"
@@ -347,14 +432,20 @@ export default function SessionCapture({
             aria-busy={ending !== "idle"}
             className={btnPrimary}
           >
-            {ending === "saving" ? "Saving…" : ending === "analyzing" ? "Analyzing…" : "End session"}
+            {ending === "saving"
+              ? "Saving…"
+              : ending === "uploading"
+                ? "Saving audio…"
+                : ending === "analyzing"
+                  ? "Analyzing…"
+                  : "End session"}
           </button>
         </div>
         {endError ? (
           <div
             role="alert"
             data-testid="end-session-error"
-            className="absolute top-full right-2 z-20 mt-2 flex max-w-sm items-center gap-3 rounded-md border border-danger/30 bg-chrome py-1 pr-1 pl-3.5 text-sm text-danger shadow-raised sm:right-3"
+            className="enter-soft absolute top-full right-2 z-20 mt-2 flex max-w-sm items-center gap-3 rounded-pill border border-danger/30 bg-chrome py-1 pr-1 pl-4 text-sm text-danger shadow-page sm:right-3"
           >
             <span className="text-pretty">{endError}</span>
             <button
@@ -370,44 +461,34 @@ export default function SessionCapture({
         ) : null}
       </TopBar>
 
-      <LecturePlayer
-        title={lecture.title}
-        durationMs={lecture.durationMs}
-        mediaRef={audioRef}
-        actions={
-          <button
-            type="button"
-            data-testid="transcript-toggle"
-            aria-pressed={transcriptOpen}
-            aria-controls="transcript-panel"
-            onClick={() => setTranscriptOpen((o) => !o)}
-            className={`press inline-flex min-h-11 shrink-0 items-center gap-2 rounded-pill px-3 text-sm font-medium ${
-              transcriptOpen ? "bg-accent-soft text-accent" : "text-ink-muted hover:bg-chrome-hover hover:text-ink"
-            }`}
-          >
-            <TranscriptIcon size={18} />
-            <span className="hidden sm:inline">Transcript</span>
-          </button>
-        }
-        aside={
-          <div className="flex shrink-0 items-center gap-1 pr-1">
-            <HesitationMeter strokes={strokes} words={words} getLectureMs={getLectureMs} />
-            <span data-testid="stroke-counter" className="hidden text-sm tabular-nums text-ink-subtle lg:block">
-              {countLabel.strokes}
-              {countLabel.erased ? <span className="text-ghost-strong"> · {countLabel.erased}</span> : null}
-            </span>
-          </div>
-        }
-      />
+      {isLive ? (
+        <LiveLectureBar
+          live={live}
+          title={lecture.title}
+          available={liveAvailable}
+          actions={transcriptToggle}
+          aside={playerAside}
+        />
+      ) : (
+        <LecturePlayer
+          title={lecture.title}
+          durationMs={lecture.durationMs}
+          mediaRef={audioRef}
+          actions={transcriptToggle}
+          aside={playerAside}
+        />
+      )}
 
       <main className="relative flex min-h-0 flex-1">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-          <LectureMedia
-            src={lectureMediaUrl(lecture.id)}
-            mediaType={lecture.mediaType}
-            title={lecture.title}
-            mediaRef={audioRef}
-          />
+          {isLive ? null : (
+            <LectureMedia
+              src={lectureMediaUrl(lecture.id)}
+              mediaType={lecture.mediaType}
+              title={lecture.title}
+              mediaRef={audioRef}
+            />
+          )}
           {/* Live region stays mounted so screen readers announce the toast when it appears. */}
           <div
             role="status"
@@ -419,15 +500,15 @@ export default function SessionCapture({
                 key={scribbleToast.scribbleId}
                 data-testid="scribble-toast"
                 data-kind={scribbleToast.by ?? "scribble"}
-                className="enter-soft pointer-events-auto flex items-center gap-3 rounded-pill bg-ink py-1 pr-1 pl-4 text-sm text-chrome shadow-page"
+                className="enter-soft pointer-events-auto flex items-center gap-3 rounded-pill border border-white/10 bg-ink/95 py-1 pr-1 pl-4 text-sm text-white shadow-page"
               >
-                <span aria-hidden="true" className="inline-block w-3.5 border-t-2 border-dashed border-ghost" />
+                <span aria-hidden="true" className="inline-block w-3.5 border-t-2 border-dashed border-teal-300" />
                 <span>{scribbleToast.by === "strike" ? "Struck through" : "Scribbled out"} — kept as ghost</span>
                 <button
                   type="button"
                   data-testid="scribble-undo"
                   onClick={() => undoScribble(scribbleToast)}
-                  className="press inline-flex min-h-11 items-center gap-1.5 rounded-pill px-3.5 font-semibold text-ghost-soft hover:bg-white/10 active:bg-white/15"
+                  className="press inline-flex min-h-11 items-center gap-1.5 rounded-pill px-3.5 font-semibold text-teal-200 hover:bg-white/10 active:bg-white/15"
                 >
                   <UndoIcon size={16} />
                   Undo
@@ -444,9 +525,17 @@ export default function SessionCapture({
             onErase={handleErase}
             className="paper min-h-0 flex-1"
           />
-          <OpenGapsBanner threads={openGaps} mediaRef={audioRef} />
+          {isLive ? null : <OpenGapsBanner threads={openGaps} mediaRef={audioRef} />}
         </div>
-        {transcriptOpen ? (
+        {transcriptOpen && isLive ? (
+          <LiveTranscriptPanel
+            id="transcript-panel"
+            cues={live.cues}
+            interim={live.interim}
+            speechSupported={live.support?.speech !== false}
+            onClose={closeTranscript}
+          />
+        ) : transcriptOpen ? (
           <TranscriptPanel
             id="transcript-panel"
             words={words}

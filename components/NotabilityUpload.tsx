@@ -74,7 +74,7 @@ function ExportSteps() {
     <ol aria-label="How to export from Notability" className="flex flex-wrap items-center justify-center gap-1.5 text-sm text-ink-muted">
       {steps.map((s, i) => (
         <li key={s} className="inline-flex items-center gap-1.5">
-          <span className="rounded-sm border border-line bg-chrome px-2 py-0.5 font-medium text-ink shadow-hairline">{s}</span>
+          <span className="rounded-pill border border-line bg-chrome px-2.5 py-0.5 font-medium text-ink shadow-[0_1px_2px_rgb(15_23_42/0.04)]">{s}</span>
           {i < steps.length - 1 ? <span aria-hidden="true" className="text-ink-subtle">→</span> : null}
         </li>
       ))}
@@ -105,11 +105,11 @@ export function NotabilityDropzone({
 
   return (
     <section aria-labelledby={headingId} className="mx-auto flex w-full max-w-md flex-col items-center gap-5 px-4 py-8 text-center">
-      <span aria-hidden="true" className="inline-flex size-12 items-center justify-center rounded-lg border border-line bg-paper text-ink-muted shadow-raised">
+      <span aria-hidden="true" className="inline-flex size-12 items-center justify-center rounded-lg border border-teal-200 bg-accent-soft text-accent-press shadow-raised">
         <DocumentIcon size={24} />
       </span>
       <div className="flex flex-col gap-1.5">
-        <h3 id={headingId} className="text-lg font-semibold text-balance text-ink">
+        <h3 id={headingId} className="text-xl font-extrabold tracking-tight text-balance text-ink">
           {title}
         </h3>
         {children ?? (
@@ -146,7 +146,7 @@ export function NotabilityDropzone({
       <UploadError state={state} />
 
       <div className="flex flex-col items-center gap-2">
-        <p className="text-xs font-medium tracking-wide text-ink-subtle uppercase">In Notability</p>
+        <p className="text-xs font-bold tracking-wide text-ink-muted uppercase">In Notability</p>
         <ExportSteps />
         <p className="text-xs text-pretty text-ink-subtle">Open the note, then save the PDF to Files and pick it here.</p>
       </div>

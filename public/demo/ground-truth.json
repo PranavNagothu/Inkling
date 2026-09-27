@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "name": "Maya demo — confusion labels",
+  "lectureId": "demo-chain-rule",
+  "toleranceMs": 15000,
+  "note": "Small hand-labeled demo set, not a benchmark. Each label is a lecture time where the student would have marked '?' in her notes. The labels are derived from the seeded Maya scenario's intended confusion moments in lib/demoScenario.ts (the file header and DEMO_TIMES), written down before looking at the detector's output: (1) 01:02 — she wrote only the outer derivative 2(3x+1) and erased it at DEMO_TIMES.breakthroughEraseMs (62000); (2) 01:40 — she wrote cos(x²) without the inner derivative and erased it at DEMO_TIMES.correctionEraseMs (100000); (3) ~04:07 — the product-vs-chain attempt x²e^{3x} starts at 246500 ms in buildMayaSession1 (slow writing, erased, never rewritten; inside DEMO_TIMES.gapFromMs..gapToMs). Session 2 is calm writing through the same material, so it carries no labels (every flag there is a false positive). A detection matches a label when it is within toleranceMs; matching is one-to-one, nearest pairs first. A hesitation spike's time is the centre of its 10 s scoring window.",
+  "sessions": [
+    {
+      "sessionId": "demo-maya-1",
+      "title": "Maya — Session 1",
+      "scenario": "buildMayaSession1",
+      "labels": [
+        {
+          "atMs": 62000,
+          "text": "3x+1: stopped after the outer derivative, erased 2(3x+1)",
+          "source": "DEMO_TIMES.breakthroughEraseMs"
+        },
+        {
+          "atMs": 100000,
+          "text": "sin(x²): forgot the inner derivative, erased cos(x²)",
+          "source": "DEMO_TIMES.correctionEraseMs"
+        },
+        {
+          "atMs": 246500,
+          "text": "x²e^{3x}: product vs chain — slow attempt, erased, never rewritten",
+          "source": "buildMayaSession1: start of the hesitant attempt (atMs 246500)"
+        }
+      ]
+    },
+    {
+      "sessionId": "demo-maya-2",
+      "title": "Maya — Session 2",
+      "scenario": "buildMayaSession2",
+      "labels": []
+    }
+  ]
+}

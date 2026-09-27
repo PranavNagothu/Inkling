@@ -60,7 +60,8 @@ function newestSource() {
 function needsBuild() {
   if (flag("--build")) return true;
   if (flag("--no-build")) return false;
-  const buildId = join(root, ".next", "BUILD_ID");
+  // next.config.ts builds into INKLING_DIST_DIR when set (e2e/preview servers), else .next.
+  const buildId = join(root, process.env.INKLING_DIST_DIR || ".next", "BUILD_ID");
   return !existsSync(buildId) || statSync(buildId).mtimeMs < newestSource();
 }
 

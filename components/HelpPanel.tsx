@@ -1,17 +1,35 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import { LANGUAGES, languageInfo, type LanguageCode } from "@/lib/ai/languages";
 import type { AiStatus } from "@/lib/ai/types";
 import type { PublicHelpCard, TimelineEvent } from "@/lib/types";
 import { CheckIcon, SparkleIcon, SpeakerIcon, StopIcon } from "./icons";
 import { MomentGlyph } from "./Timeline";
+import { btnPrimary, btnSecondary } from "./ui";
+import { useHelpLanguage } from "./useHelpLanguage";
 import { useReadAloud } from "./useReadAloud";
 
 type HelpState =
   | { kind: "loading" }
   | { kind: "nokey" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; help: PublicHelpCard };
+  | {
+      kind: "ready";
+      help: PublicHelpCard;
+      /** The language asked for, and the one the card is in (English when it fell back). */
+      requested: LanguageCode;
+      language: LanguageCode;
+      fallback: boolean;
+    };
+
+interface HelpResponse {
+  help?: PublicHelpCard;
+  event?: TimelineEvent;
+  language?: LanguageCode;
+  languageFallback?: boolean;
+  error?: string;
+}
 
 type Feedback =
   | { result: "correct"; why: string; answerIdx: number; type: TimelineEvent["type"] }
@@ -32,7 +50,7 @@ const SOURCE_LABEL: Record<PublicHelpCard["source"], string> = {
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <h3 className="text-xs font-medium tracking-wide text-ink-subtle uppercase">{children}</h3>;
+  return <h3 className="text-xs font-bold tracking-wide text-ink-muted uppercase">{children}</h3>;
 }
 
 /** Quiet card shown when no AI provider is configured; everything else keeps working. */
@@ -60,8 +78,67 @@ function Skeleton() {
   );
 }
 
-function ReadAloud({ eventId, text, serverVoice }: { eventId: string; text: string; serverVoice?: boolean }) {
-  const { state, voice, hint, start, stop } = useReadAloud(eventId, text, serverVoice);
+function GlobeIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z" />
+    </svg>
+  );
+}
+
+/**
+ * "Explain in …": the student's language for this card, Read aloud and the recap. Remembered on
+ * this device; English by default.
+ */
+function LanguagePicker({ value, onChange, busy }: { value: LanguageCode; onChange: (l: LanguageCode) => void; busy: boolean }) {
+  const id = useId();
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <label htmlFor={id} className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+        <GlobeIcon size={14} />
+        Explain in
+      </label>
+      <select
+        id={id}
+        data-testid="help-language"
+        value={value}
+        onChange={(e) => onChange(e.target.value as LanguageCode)}
+        className="min-h-11 cursor-pointer rounded-pill border border-line-strong bg-chrome px-3 text-sm font-medium text-ink transition-[background-color,border-color] duration-150 hover:bg-chrome-hover focus-visible:shadow-[var(--focus-ring)] focus-visible:outline-none"
+      >
+        {LANGUAGES.map((l) => (
+          <option key={l.code} value={l.code} lang={l.bcp47}>
+            {l.code === "en" ? l.native : `${l.native} · ${l.name.replace(/ \(.*\)$/, "")}`}
+          </option>
+        ))}
+      </select>
+      {busy ? (
+        <span data-testid="help-language-busy" aria-live="polite" className="text-xs text-ink-subtle motion-safe:animate-pulse">
+          Translating…
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function ReadAloud({
+  eventId,
+  text,
+  serverVoice,
+  language,
+}: {
+  eventId: string;
+  text: string;
+  serverVoice?: boolean;
+  language: LanguageCode;
+}) {
+  const { state, voice, hint, start, stop } = useReadAloud({
+    resetKey: eventId,
+    text,
+    ttsUrl: `/api/events/${encodeURIComponent(eventId)}/tts`,
+    serverVoice,
+    language,
+  });
   const active = state === "speaking" || state === "loading";
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -113,21 +190,33 @@ export default function HelpPanel({
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [wrong, setWrong] = useState<number[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [language, setLanguage] = useHelpLanguage();
   const name = useId();
   const eventId = event.id;
 
   useEffect(() => {
     if (!ai.enabled) return;
     const ctrl = new AbortController();
-    fetch(`/api/events/${encodeURIComponent(eventId)}/help`, { method: "POST", signal: ctrl.signal })
+    fetch(`/api/events/${encodeURIComponent(eventId)}/help`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ language }),
+      signal: ctrl.signal,
+    })
       .then(async (res) => {
         if (res.status === 503) return setState({ kind: "nokey" });
-        const body = (await res.json().catch(() => ({}))) as { help?: PublicHelpCard; event?: TimelineEvent; error?: string };
+        const body = (await res.json().catch(() => ({}))) as HelpResponse;
         if (!res.ok || !body.help) {
           setState({ kind: "error", message: body.error ?? "Couldn’t prepare an explanation." });
           return;
         }
-        setState({ kind: "ready", help: body.help });
+        setState({
+          kind: "ready",
+          help: body.help,
+          requested: language,
+          language: body.language ?? "en",
+          fallback: !!body.languageFallback,
+        });
         // The concept may have just been given a better name.
         if (body.event) onEventsChange([body.event]);
       })
@@ -135,9 +224,9 @@ export default function HelpPanel({
         if (!ctrl.signal.aborted) setState({ kind: "error", message: "Couldn’t reach the server." });
       });
     return () => ctrl.abort();
-    // onEventsChange is a stable merge callback; re-fetching only depends on the moment.
+    // onEventsChange is a stable merge callback; re-fetching depends on the moment and language.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId, ai.enabled, attempt]);
+  }, [eventId, ai.enabled, attempt, language]);
 
   if (state.kind === "nokey") return <NoKeyCard />;
 
@@ -150,7 +239,9 @@ export default function HelpPanel({
       const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/check`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ choiceIdx: choice }),
+        // Graded on the server against the stored card (same option order in every language);
+        // the language only picks which "why" comes back.
+        body: JSON.stringify({ choiceIdx: choice, language: state.kind === "ready" ? state.language : "en" }),
       });
       if (!res.ok) throw new Error(`check failed: ${res.status}`);
       const body = (await res.json()) as CheckResponse;
@@ -174,6 +265,16 @@ export default function HelpPanel({
   const solvedBefore = !feedback && !!last?.correct;
   const solved = feedback?.result === "correct" || solvedBefore;
   const breakthrough = event.type === "breakthrough";
+  const translating = state.kind === "ready" && state.requested !== language;
+  const served = state.kind === "ready" ? languageInfo(state.language) : languageInfo("en");
+
+  const changeLanguage = (next: LanguageCode) => {
+    if (next === language) return;
+    setLanguage(next);
+    // The old "why" is in the old language; a solved card still says it was solved (checkAttempts).
+    setFeedback(null);
+    setSubmitError(null);
+  };
 
   return (
     <section data-testid="help-card" aria-labelledby={`${name}-title`} className="flex flex-col gap-3">
@@ -194,6 +295,18 @@ export default function HelpPanel({
         ) : null}
       </div>
 
+      {state.kind === "ready" || state.kind === "loading" ? (
+        <LanguagePicker value={language} onChange={changeLanguage} busy={translating} />
+      ) : null}
+
+      {state.kind === "ready" && state.fallback && !translating ? (
+        <p data-testid="help-language-note" className="-mt-1 text-xs text-pretty text-ink-subtle">
+          {ai.mode === "demo"
+            ? `${languageInfo(state.requested).native} isn’t available offline in this demo — showing English.`
+            : `Couldn’t translate this one right now — showing English.`}
+        </p>
+      ) : null}
+
       {state.kind === "loading" ? <Skeleton /> : null}
 
       {state.kind === "error" ? (
@@ -205,7 +318,7 @@ export default function HelpPanel({
               setState({ kind: "loading" });
               setAttempt((n) => n + 1);
             }}
-            className="press inline-flex min-h-11 items-center rounded-pill border border-line-strong bg-chrome px-4 text-sm font-semibold text-ink hover:bg-chrome-hover"
+            className={btnSecondary}
           >
             Try again
           </button>
@@ -213,11 +326,18 @@ export default function HelpPanel({
       ) : null}
 
       {state.kind === "ready" ? (
-        <div className="enter-soft flex flex-col gap-4">
+        <div
+          key={state.language}
+          lang={served.bcp47}
+          dir={served.rtl ? "rtl" : "ltr"}
+          data-language={state.language}
+          aria-busy={translating}
+          className={`enter-soft flex flex-col gap-4 transition-opacity duration-150 ${translating ? "opacity-60" : "opacity-100"}`}
+        >
           <p data-testid="help-reexplain" className="text-sm leading-relaxed text-pretty text-ink">
             {state.help.reexplain}
           </p>
-          <ReadAloud eventId={eventId} text={state.help.reexplain} serverVoice={ai.tts} />
+          <ReadAloud eventId={eventId} text={state.help.reexplain} serverVoice={ai.tts} language={state.language} />
 
           <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
             <fieldset data-testid="check-question" disabled={solved || pending} className="flex flex-col gap-2">
@@ -227,11 +347,11 @@ export default function HelpPanel({
                 const isRight = feedback?.result === "correct" && feedback.answerIdx === i;
                 const selected = choice === i;
                 const tone = isRight
-                  ? "border-breakthrough bg-breakthrough-soft text-breakthrough-strong"
+                  ? "border-ok bg-ok-soft text-ok-strong"
                   : isWrong
                     ? "border-gap/40 bg-gap-soft/60 text-ink-muted line-through decoration-gap/60"
                     : selected
-                      ? "border-accent bg-accent-soft text-ink"
+                      ? "border-accent bg-accent-soft/60 text-ink"
                       : "border-line bg-chrome text-ink hover:bg-chrome-hover";
                 return (
                   <label
@@ -263,7 +383,7 @@ export default function HelpPanel({
                   type="submit"
                   data-testid="check-submit"
                   disabled={choice === null || pending}
-                  className="press inline-flex min-h-11 items-center justify-center gap-2 rounded-pill bg-accent px-4 text-sm font-semibold text-on-accent shadow-raised hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className={btnPrimary}
                 >
                   {pending ? "Checking…" : feedback?.result === "wrong" ? "Try again" : "Check answer"}
                 </button>
@@ -281,9 +401,9 @@ export default function HelpPanel({
               <div
                 data-testid="check-feedback"
                 data-result="correct"
-                className="enter-soft flex flex-col gap-1 rounded-md border border-breakthrough/30 bg-breakthrough-soft px-3 py-2.5"
+                className="enter-soft flex flex-col gap-1 rounded-md border border-ok/30 bg-ok-soft px-3 py-2.5"
               >
-                <p className="flex items-center gap-2 text-base font-semibold text-breakthrough-strong">
+                <p className="flex items-center gap-2 text-base font-semibold text-ok-strong">
                   {breakthrough ? <MomentGlyph type="breakthrough" size={14} /> : <CheckIcon size={16} />}
                   {breakthrough ? "Breakthrough!" : event.type === "unresolved_gap" ? "Got it — gap resolved" : "Correct!"}
                 </p>
