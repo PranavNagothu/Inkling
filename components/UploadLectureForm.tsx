@@ -16,6 +16,7 @@ import {
 import { formatClock } from "./LecturePlayer";
 import { CaptionsIcon, CheckIcon, WaveIcon } from "./icons";
 import { btnPrimary, btnSecondary } from "./ui";
+import { UPLOAD_DEMO_MESSAGE } from "@/lib/demoMode";
 
 function formatBytes(n: number): string {
   if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
@@ -141,7 +142,11 @@ function FileZone({
   );
 }
 
-export default function UploadLectureForm({ aiConfigured }: { aiConfigured: boolean }) {
+/**
+ * `available` is false in DEMO_MODE (a public demo stores no uploads): the form is shown disabled,
+ * with a note, and the server refuses the upload anyway (403).
+ */
+export default function UploadLectureForm({ aiConfigured, available = true }: { aiConfigured: boolean; available?: boolean }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [media, setMedia] = useState<MediaState>({ status: "empty" });
@@ -153,7 +158,7 @@ export default function UploadLectureForm({ aiConfigured }: { aiConfigured: bool
 
   const chooseMedia = async (file: File | null) => {
     setError(null);
-    if (!file) return;
+    if (!file || !available) return;
     const check = checkMediaFile(file);
     const token = ++readToken.current;
     if (!check.ok) {
@@ -174,7 +179,7 @@ export default function UploadLectureForm({ aiConfigured }: { aiConfigured: bool
 
   const chooseCaptions = async (file: File | null) => {
     setError(null);
-    if (!file) return;
+    if (!file || !available) return;
     const check = checkCaptionsFile(file);
     if (!check.ok) return setCaptions({ status: "error", file, error: check.error });
     const cues = parseCaptions(await file.text()).length;
@@ -184,11 +189,11 @@ export default function UploadLectureForm({ aiConfigured }: { aiConfigured: bool
   };
 
   const uploading = progress !== null;
-  const canSubmit = media.status === "ready" && captions.status !== "error" && !uploading;
+  const canSubmit = available && media.status === "ready" && captions.status !== "error" && !uploading;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (media.status !== "ready" || captions.status === "error") return;
+    if (!available || media.status !== "ready" || captions.status === "error") return;
     const form = new FormData();
     form.set("title", sanitizeTitle(title, titleFromFileName(media.file.name) || "Untitled lecture"));
     form.set("durationMs", String(media.durationMs));
@@ -267,7 +272,14 @@ export default function UploadLectureForm({ aiConfigured }: { aiConfigured: bool
       data-testid="upload-form"
       className="panel flex flex-col gap-6 p-4 sm:p-6"
       noValidate
+      aria-describedby={available ? undefined : "upload-demo-note"}
     >
+      {available ? null : (
+        <p id="upload-demo-note" data-testid="upload-demo-note" className="rounded-md bg-chrome px-3.5 py-2.5 text-sm text-pretty text-ink-muted">
+          {UPLOAD_DEMO_MESSAGE}
+        </p>
+      )}
+      <fieldset disabled={!available} className="m-0 flex min-w-0 flex-col gap-6 border-0 p-0 disabled:opacity-60">
       <div className="flex flex-col gap-1.5">
         <label htmlFor="lecture-title" className="text-sm font-medium text-ink">
           Title
@@ -320,12 +332,13 @@ export default function UploadLectureForm({ aiConfigured }: { aiConfigured: bool
           Captions become the transcript you can follow while taking notes. Without them the lecture still works, but
           moments won’t show what was said and pauses in your writing aren’t scored.
         </p>
-        {!aiConfigured ? (
+        {!aiConfigured && available ? (
           <p data-testid="upload-ai-note" className="px-1 text-xs text-ink-subtle">
             Auto-transcribe needs an OpenAI or Groq key
           </p>
         ) : null}
       </div>
+      </fieldset>
 
       {error ? (
         <p role="alert" data-testid="upload-error" className="rounded-md bg-gap-soft px-3.5 py-2.5 text-sm text-gap-strong">

@@ -22,6 +22,8 @@ interface Props {
   initialTimeline: TimelineData | null;
   /** The session's current Notability PDF, if one was uploaded. */
   initialImport: NotabilityImport | null;
+  /** False in DEMO_MODE: importing or replacing the PDF is shown disabled, with a note. */
+  pdfUploadAvailable?: boolean;
 }
 
 const MOMENT_STATS: Array<{ key: "corrections" | "gaps" | "breakthroughs"; type: TimelineEventType; one: string; many: string; testId: string }> = [
@@ -130,7 +132,7 @@ function FinalPage({
   if (pdf.status === "idle") {
     return (
       <div className="absolute inset-0 overflow-y-auto bg-desk/60">
-        <NotabilityDropzone upload={upload.upload} state={upload.state} />
+        <NotabilityDropzone upload={upload.upload} state={upload.state} available={upload.available} />
       </div>
     );
   }
@@ -145,7 +147,7 @@ function FinalPage({
   if (pdf.status === "error") {
     return (
       <div className="absolute inset-0 overflow-y-auto bg-desk/60">
-        <NotabilityDropzone upload={upload.upload} state={upload.state} title="This PDF can’t be shown">
+        <NotabilityDropzone upload={upload.upload} state={upload.state} available={upload.available} title="This PDF can’t be shown">
           <p role="alert" data-testid="notability-error" data-kind={pdf.kind} className="text-sm text-pretty text-danger">
             {pdf.message}
           </p>
@@ -278,17 +280,21 @@ function OverlayStage({
   );
 }
 
-export default function CompareView({ session, strokes, initialTimeline, initialImport }: Props) {
+export default function CompareView({ session, strokes, initialTimeline, initialImport, pdfUploadAvailable = true }: Props) {
   const { timeline, status } = useSessionTimeline(session.id, initialTimeline);
   const [current, setCurrent] = useState<NotabilityImport | null>(initialImport);
   const [page, setPage] = useState(1);
   const [mode, setMode] = useState<Mode>("side");
   const [reveal, setReveal] = useState(DEFAULT_REVEAL);
 
-  const upload = useNotabilityUpload(session.id, (imported) => {
-    setCurrent(imported);
-    setPage(1);
-  });
+  const upload = useNotabilityUpload(
+    session.id,
+    (imported) => {
+      setCurrent(imported);
+      setPage(1);
+    },
+    pdfUploadAvailable,
+  );
   const pdf = usePdfDocument(current ? notabilityFileUrl(session.id, current.id) : null);
   const pageCount = pdf.status === "ready" ? pdf.numPages : 0;
   const shownPage = Math.min(page, Math.max(1, pageCount));
@@ -319,7 +325,7 @@ export default function CompareView({ session, strokes, initialTimeline, initial
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {effectiveMode === "overlay" ? pageNav : null}
           <ModeToggle mode={effectiveMode} onChange={setMode} overlayDisabled={!overlayReady} />
-          {current ? <ReplacePdfButton upload={upload.upload} state={upload.state} /> : null}
+          {current ? <ReplacePdfButton upload={upload.upload} state={upload.state} available={upload.available} /> : null}
         </div>
       </TopBar>
 

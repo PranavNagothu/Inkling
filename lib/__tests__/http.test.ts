@@ -29,6 +29,33 @@ describe('isSameOrigin / sameOriginOnly', () => {
     expect(isSameOrigin(post({ origin: 'null' }))).toBe(false);
   });
 
+  it('works behind a TLS-terminating proxy and on custom domains (Railway, Vercel, Caddy)', () => {
+    const at = (headers: Record<string, string>) =>
+      new Request('http://10.0.0.5:8080/api/x', { method: 'POST', headers });
+    // Railway: Host is the public domain, x-forwarded-proto https, Origin without the default port.
+    expect(isSameOrigin(at({ host: 'inkling-production.up.railway.app', 'x-forwarded-proto': 'https', origin: 'https://inkling-production.up.railway.app' }))).toBe(true);
+    expect(isSameOrigin(at({ host: 'www.inkling.tech', origin: 'https://www.inkling.tech' }))).toBe(true);
+    // Host carrying the default port, or different case, still matches.
+    expect(isSameOrigin(at({ host: 'www.inkling.tech:443', origin: 'https://www.inkling.tech' }))).toBe(true);
+    expect(isSameOrigin(at({ host: 'WWW.Inkling.tech', origin: 'https://www.inkling.tech' }))).toBe(true);
+    // A proxy that rewrites Host to the upstream but forwards the public host.
+    expect(isSameOrigin(at({ host: '10.0.0.5:8080', 'x-forwarded-host': 'www.inkling.tech', origin: 'https://www.inkling.tech' }))).toBe(true);
+    expect(isSameOrigin(at({ host: '10.0.0.5:8080', 'x-forwarded-host': 'www.inkling.tech, proxy.internal', origin: 'https://www.inkling.tech' }))).toBe(true);
+  });
+
+  it('still refuses other sites, other ports and malformed hosts', () => {
+    const at = (headers: Record<string, string>) =>
+      new Request('http://10.0.0.5:8080/api/x', { method: 'POST', headers });
+    expect(isSameOrigin(at({ host: 'www.inkling.tech', origin: 'https://evil.example' }))).toBe(false);
+    expect(isSameOrigin(at({ host: 'www.inkling.tech', 'x-forwarded-host': 'inkling.tech', origin: 'https://evil.example' }))).toBe(false);
+    // The apex and www are different origins (the apex should redirect to www on GET).
+    expect(isSameOrigin(at({ host: 'www.inkling.tech', origin: 'https://inkling.tech' }))).toBe(false);
+    expect(isSameOrigin(at({ host: 'www.inkling.tech', origin: 'https://www.inkling.tech:8443' }))).toBe(false);
+    expect(isSameOrigin(at({ host: 'evil.example@www.inkling.tech', origin: 'https://www.inkling.tech' }))).toBe(false);
+    expect(isSameOrigin(at({ host: 'www.inkling.tech', origin: 'ftp://www.inkling.tech' }))).toBe(false);
+    expect(isSameOrigin(at({ origin: 'https://www.inkling.tech' }))).toBe(false);
+  });
+
   it('answers 403 without running the handler for a cross-site request', async () => {
     const handler = vi.fn(async () => Response.json({ ok: true }));
     const guarded = sameOriginOnly(handler);

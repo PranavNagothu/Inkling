@@ -1,0 +1,16 @@
+# Railway builds from a clean git checkout; this keeps local `docker build`s just as clean.
+.git
+node_modules
+.next
+.next-*
+data
+landing
+test-results
+playwright-report
+blob-report
+screenshots
+notability-screenshots
+coverage
+.env*
+*.tsbuildinfo
+next-env.d.ts

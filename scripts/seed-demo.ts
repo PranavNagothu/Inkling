@@ -15,10 +15,11 @@ async function main() {
   // Imported after the environment is loaded (the repository reads DATABASE_URL when first used).
   const { getDb } = await import("../lib/db");
   const { seedDemo } = await import("../lib/demoSeed");
+  const { dbPathSetting } = await import("../lib/paths");
   const db = getDb();
   try {
     const info = await db.info();
-    const where = info.backend === "sqlite" ? `SQLite (${process.env.INKLING_DB_PATH || "data/inkling.db"})` : `Postgres${info.timescale ? " + TimescaleDB" : ""}`;
+    const where = info.backend === "sqlite" ? `SQLite (${dbPathSetting()})` : `Postgres${info.timescale ? " + TimescaleDB" : ""}`;
     const result = await seedDemo({ reset: args.has("--reset") });
     const clock = (ms: number) => `${String(Math.floor(ms / 60_000)).padStart(2, "0")}:${String(Math.floor((ms % 60_000) / 1000)).padStart(2, "0")}`;
     console.log(result.status === "seeded" ? `Seeded the demo into ${where}.` : `The demo is already in ${where} (use --reset to rebuild it).`);

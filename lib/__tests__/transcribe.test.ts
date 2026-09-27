@@ -18,6 +18,8 @@ describe('selectTranscriber', () => {
   it('is off without a key, or with INKLING_DISABLE_AI=1', () => {
     expect(selectTranscriber({})).toBeNull();
     expect(selectTranscriber({ ...GROQ, INKLING_DISABLE_AI: '1' })).toBeNull();
+    // The public demo never spends Whisper credits, even with a key set for the landing assistant.
+    expect(selectTranscriber({ ...GROQ, DEMO_MODE: '1' })).toBeNull();
     expect(selectTranscriber({ OPENAI_API_KEY: '', GROQ_API_KEY: ' ' })).toBeNull();
   });
 

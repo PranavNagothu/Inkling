@@ -5,6 +5,7 @@ import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { cuesToWords, parseCaptions } from "@/lib/captions";
 import { getDb } from "@/lib/db";
+import { UPLOAD_DEMO_MESSAGE, demoForbidden, isDemoMode } from "@/lib/demoMode";
 import { sameOriginOnly } from "@/lib/http";
 import { listLectures } from "@/lib/lecture";
 import { uploadTarget } from "@/lib/storage";
@@ -35,8 +36,11 @@ export async function GET() {
  * Route handlers have no body-size limit of their own in Next 16 (proxyClientMaxBodySize only
  * applies when a proxy is configured, and this app has none), so the limit is enforced here from
  * Content-Length before the body is read.
+ *
+ * Disabled in DEMO_MODE (403, before the body is read): a public demo never stores uploads.
  */
 export const POST = sameOriginOnly(async (request: Request) => {
+  if (isDemoMode(process.env)) return demoForbidden(UPLOAD_DEMO_MESSAGE);
   const lengthHeader = request.headers.get("content-length");
   const length = lengthHeader === null ? NaN : Number(lengthHeader);
   if (!Number.isFinite(length) || length < 0) return fail(411, "Content-Length is required.");

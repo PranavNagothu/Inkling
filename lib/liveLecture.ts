@@ -8,6 +8,7 @@
 import type { TranscriptWord } from './types';
 import { LANGUAGES } from './ai/languages';
 import { MAX_DURATION_MS } from './upload';
+import { isDemoMode } from './demoMode';
 
 // ── The session clock ───────────────────────────────────────────────────────────────────────────
 
@@ -178,5 +179,5 @@ export const LIVE_DEMO_MESSAGE = 'Live lecture is available when you run Inkling
 
 /** DEMO_MODE (a public demo) never records audio or creates Live lectures. */
 export function liveLectureDisabled(env: Record<string, string | undefined>): boolean {
-  return /^(1|true|yes|on)$/i.test(env.DEMO_MODE?.trim() ?? '');
+  return isDemoMode(env);
 }

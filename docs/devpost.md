@@ -1,6 +1,7 @@
 # Inkling: Devpost submission
 
-> Placeholders to fill in before submitting: **[YouTube link]**, **[live URL]**.
+> Placeholders to fill in before submitting: **[YouTube link]**.
+> Live app: https://inklingapp.tech
 > GitHub: https://github.com/PranavNagothu/Inkling
 
 ---
@@ -115,7 +116,7 @@ I used Notability Pro during the build as my research and design notebook. I rec
 - **Voice:** ElevenLabs (stock voice "Rachel" by default).
 - **Models:** Google Gemini `gemini-3.1-flash-lite`; `openai/gpt-oss-120b` and `openai/gpt-oss-20b` served by Groq.
 - **Planning and research:** Notability Pro.
-- **Links:** Demo video [YouTube link] · Live app [live URL] · Code https://github.com/PranavNagothu/Inkling
+- **Links:** Demo video [YouTube link] · Live app https://inklingapp.tech · Code https://github.com/PranavNagothu/Inkling
 
 ---
 
@@ -144,5 +145,5 @@ ElevenLabs `eleven_flash_v2_5` reads each re-explanation and the session recap a
 **MLH: Best use of Tiger Data.**
 See the Tiger Data answer above: a hypertable of pen samples, `time_bucket` window statistics, and a real-time continuous aggregate behind the class hotspot chart, all in `lib/dbPostgres.ts`.
 
-**MLH: .tech domain / Vultr (only if applicable).** *[Include only if the app is actually served from a .tech domain or deployed on Vultr; neither is in the code today.]*
-Inkling is served at [live URL] *(on [your-domain].tech / a Vultr instance)*.
+**MLH: .tech domain.**
+Inkling is served at https://inklingapp.tech, a .tech domain from get.tech. It is hosted on Railway: one Next.js service with SQLite on a persistent volume, running the offline public demo (`DEMO_MODE`), which resets itself every 30 minutes (`docs/railway.md`).

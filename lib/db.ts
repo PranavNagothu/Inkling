@@ -18,6 +18,7 @@ import type {
 } from "./types";
 import { newId } from "./ink";
 import { DEMO_LECTURE, DEMO_MEDIA_PATH } from "./demo";
+import { dbPathSetting } from "./paths";
 import {
   LOCAL_STUDENT_ID,
   SESSION_STROKE_COUNTS_SQL,
@@ -820,7 +821,8 @@ const g = globalThis as unknown as { __inklingDb?: Db };
 
 /**
  * The app's repository. DATABASE_URL (postgres:// — e.g. a Tiger Data / Timescale Cloud service)
- * selects Postgres; without it, the local SQLite file (INKLING_DB_PATH, default data/inkling.db).
+ * selects Postgres; without it, the local SQLite file (INKLING_DB_PATH, default
+ * <INKLING_DATA_DIR>/inkling.db, i.e. data/inkling.db; see lib/paths).
  */
 export function getDb(): Db {
   if (!g.__inklingDb) {
@@ -828,7 +830,7 @@ export function getDb(): Db {
     if (url) {
       g.__inklingDb = openPostgresDb(url);
     } else {
-      const file = resolve(/*turbopackIgnore: true*/ process.cwd(), process.env.INKLING_DB_PATH || "data/inkling.db");
+      const file = resolve(/*turbopackIgnore: true*/ process.cwd(), dbPathSetting());
       g.__inklingDb = openDb(file);
     }
   }

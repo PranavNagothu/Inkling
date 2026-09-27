@@ -15,13 +15,16 @@ const instrumentSerif = Instrument_Serif({
 
 /**
  * Absolute base for og:image and friends. Set NEXT_PUBLIC_SITE_URL for a custom domain; on Vercel
- * the production URL is used automatically; locally it falls back to the dev server.
+ * the production URL is used automatically, on Railway its generated domain (RAILWAY_PUBLIC_DOMAIN);
+ * locally it falls back to the dev server.
  */
 function siteUrl(): URL {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL;
   if (explicit) return new URL(explicit);
   const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
   if (vercel) return new URL(`https://${vercel}`);
+  const railway = process.env.RAILWAY_PUBLIC_DOMAIN?.trim();
+  if (railway) return new URL(`https://${railway}`);
   return new URL(`http://localhost:${process.env.PORT || 3000}`);
 }
 

@@ -44,7 +44,9 @@
     ".next-video/types/**/*.ts",
     ".next-video/dev/types/**/*.ts",
     ".next-live/types/**/*.ts",
-    ".next-live/dev/types/**/*.ts"
+    ".next-live/dev/types/**/*.ts",
+    ".next-rail/types/**/*.ts",
+    ".next-rail/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

@@ -1,5 +1,7 @@
 # Inkling deploy plan
 
+> **Superseded (2026-09-27):** the app is deployed on Railway (Dockerfile, SQLite on a `/data` volume, DEMO_MODE with an in-process periodic reset). Follow [`docs/railway.md`](railway.md). The blockers in section 5 (Whisper in DEMO_MODE, open uploads, reset, `sameOriginOnly` behind a proxy) are fixed in code. The research below is kept for reference.
+
 Written 2026-09-26, the night before the deadline. This covers research only; no code has been changed. Line numbers refer to the working tree at the time of writing. Another agent is merging `landing/` into the app, so re-check any reference that sits in `lib/ai/*`, `app/page.tsx` or `next.config.ts` before editing it.
 
 **Target:** one Next 16 app on your own `.tech` domain, with `/welcome` (landing) and `/app` (the app). The public site runs in `DEMO_MODE`. Live AI is shown only on your laptop.

@@ -33,7 +33,7 @@ import type { Session, TimelineEvent, TranscriptWord } from "./types";
 const g = globalThis as unknown as { __inklingLectureLock?: ReturnType<typeof createKeyedMutex> };
 const lectureLock = (g.__inklingLectureLock ??= createKeyedMutex());
 
-/** Runs `task` while holding the (student, lecture) lock. Not re-entrant: never nest. */
+/** Runs `task` while holding the (student, lecture) lock (re-entrant within the holding task; lib/mutex). */
 export function withLectureLock<T>(studentId: string, lectureId: string, task: () => Promise<T>): Promise<T> {
   return lectureLock.run(`${studentId}\u0000${lectureId}`, task);
 }

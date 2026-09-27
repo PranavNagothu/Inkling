@@ -1,5 +1,6 @@
 import { writeFile, unlink } from "node:fs/promises";
 import { getDb } from "@/lib/db";
+import { PDF_DEMO_MESSAGE, demoForbidden, isDemoMode } from "@/lib/demoMode";
 import { sameOriginOnly } from "@/lib/http";
 import {
   MAX_PDF_BYTES,
@@ -30,8 +31,11 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/sessions/[i
  *
  * Route handlers have no body-size limit of their own in Next 16, so the limit is enforced here
  * from Content-Length before the body is read (as for lecture uploads).
+ *
+ * Disabled in DEMO_MODE (403, before the body is read): a public demo never stores uploads.
  */
 export const POST = sameOriginOnly(async (request: Request, ctx: RouteContext<"/api/sessions/[id]/notability">) => {
+  if (isDemoMode(process.env)) return demoForbidden(PDF_DEMO_MESSAGE);
   const lengthHeader = request.headers.get("content-length");
   const length = lengthHeader === null ? NaN : Number(lengthHeader);
   if (!Number.isFinite(length) || length < 0) return fail(411, "Content-Length is required.");

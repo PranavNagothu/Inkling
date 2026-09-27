@@ -77,6 +77,8 @@ interface Props {
   openGaps?: ProgressThread[];
   /** Live lectures can capture here (false in DEMO_MODE: shown, but disabled with a note). */
   liveAvailable?: boolean;
+  /** Auto-transcribe can run (false in DEMO_MODE: shown, but disabled with a note). */
+  transcribeAvailable?: boolean;
 }
 
 /** Where a Live lecture's clock starts: after everything already captured for it (0 when new). */
@@ -95,6 +97,7 @@ export default function SessionCapture({
   initialStrokes,
   openGaps = [],
   liveAvailable = true,
+  transcribeAvailable = true,
 }: Props) {
   const router = useRouter();
   const audioRef = useRef<HTMLMediaElement>(null);
@@ -543,6 +546,7 @@ export default function SessionCapture({
             mediaRef={audioRef}
             lectureId={lecture.id}
             aiConfigured={aiConfigured}
+            transcribeAvailable={transcribeAvailable}
             onClose={closeTranscript}
             onTranscribed={setWords}
           />

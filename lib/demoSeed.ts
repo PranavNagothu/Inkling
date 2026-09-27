@@ -40,7 +40,8 @@ export interface SeedSummary {
 
 const HOUR = 3_600_000;
 
-const allDemoSessionIds = () => [
+/** Every session the demo owns (Maya's two and the classmates'); anything else is a visitor's. */
+export const allDemoSessionIds = () => [
   DEMO_SESSIONS.s1.id,
   DEMO_SESSIONS.s2.id,
   ...Array.from({ length: DEMO_CLASSMATES }, (_, i) => classmateSessionId(i)),
@@ -56,14 +57,22 @@ async function isComplete(db: Db): Promise<boolean> {
   return !!pdf && !!resolvePdfPath(pdf.storedName);
 }
 
-async function removeDemo(db: Db) {
+/** Deletes the demo's sessions; returns the Notability PDFs they owned (absolute paths). */
+async function removeDemo(db: Db): Promise<string[]> {
+  const files: string[] = [];
   for (const id of allDemoSessionIds()) {
     const { notabilityFiles } = await db.deleteSession(id);
     for (const name of notabilityFiles) {
       const abs = resolvePdfPath(name);
-      if (abs) await unlink(abs).catch(() => {});
+      if (abs) files.push(abs);
     }
   }
+  return files;
+}
+
+/** Best-effort removal of files whose rows are gone. */
+export async function unlinkAll(files: string[]): Promise<void> {
+  await Promise.all(files.map((f) => unlink(f).catch(() => {})));
 }
 
 async function store(db: Db, session: { id: string; title: string; studentId: string; createdAtIso: string }, page: ScenarioPage) {
@@ -79,11 +88,18 @@ async function store(db: Db, session: { id: string; title: string; studentId: st
   await db.addEraseEvents(session.id, page.eraseEvents);
 }
 
-export async function seedDemo(opts: { reset?: boolean; now?: Date } = {}): Promise<SeedSummary> {
+/**
+ * `removedFiles`: when given, the replaced Notability PDFs are handed to it instead of being deleted
+ * at the end, so a caller running the seed inside a transaction can delete them after COMMIT (a
+ * rollback then still finds them). Without it they are deleted once the new demo is stored.
+ */
+export async function seedDemo(
+  opts: { reset?: boolean; now?: Date; removedFiles?: (files: string[]) => void } = {},
+): Promise<SeedSummary> {
   const db = getDb();
   if (!(await db.getLecture(DEMO_LECTURE.lectureId))) throw new Error("the bundled demo lecture is missing");
   if (!opts.reset && (await isComplete(db))) return { status: "already-seeded", sessions: await summary(db) };
-  await removeDemo(db);
+  const obsolete = await removeDemo(db);
 
   const now = (opts.now ?? new Date()).getTime();
   const fixtures = parseDemoFixtures(demoFixturesJson);
@@ -136,6 +152,8 @@ export async function seedDemo(opts: { reset?: boolean; now?: Date } = {}): Prom
 
   // Timescale: materialise the class-wide hotspots now rather than at the next policy run.
   await (db as Db & { refreshInkAggregates?: () => Promise<void> }).refreshInkAggregates?.();
+  if (opts.removedFiles) opts.removedFiles(obsolete);
+  else await unlinkAll(obsolete);
   return { status: "seeded", sessions: await summary(db) };
 }
 

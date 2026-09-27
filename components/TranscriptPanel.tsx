@@ -6,6 +6,7 @@ import { toParagraphs, wordIndexAt } from "@/lib/transcript";
 import { formatClock } from "./LecturePlayer";
 import { CloseIcon } from "./icons";
 import { btnSecondary, iconBtn } from "./ui";
+import { TRANSCRIBE_DEMO_MESSAGE } from "@/lib/demoMode";
 
 /** How long auto-scroll stays paused after the student scrolls the transcript themselves. */
 const USER_SCROLL_PAUSE_MS = 6000;
@@ -24,6 +25,8 @@ interface TranscriptPanelProps {
   mediaRef: RefObject<HTMLMediaElement | null>;
   lectureId: string;
   aiConfigured: boolean;
+  /** False in DEMO_MODE: Auto-transcribe is shown disabled, with a note (the server answers 403). */
+  transcribeAvailable?: boolean;
   onClose: () => void;
   /** Called with the new words after a successful auto-transcription. */
   onTranscribed: (words: TranscriptWord[]) => void;
@@ -62,8 +65,9 @@ const WordList = memo(function WordList({ words }: { words: TranscriptWord[] }) 
 function NoTranscript({
   lectureId,
   aiConfigured,
+  transcribeAvailable = true,
   onTranscribed,
-}: Pick<TranscriptPanelProps, "lectureId" | "aiConfigured" | "onTranscribed">) {
+}: Pick<TranscriptPanelProps, "lectureId" | "aiConfigured" | "transcribeAvailable" | "onTranscribed">) {
   const [state, setState] = useState<"idle" | "working" | "unavailable" | "error">(aiConfigured ? "idle" : "unavailable");
   const [error, setError] = useState<string | null>(null);
 
@@ -88,7 +92,16 @@ function NoTranscript({
       <p className="text-sm text-pretty text-ink-muted">
         Upload the lecture with captions (.vtt or .srt) to follow along here and see what was said at each moment.
       </p>
-      {state === "unavailable" ? (
+      {!transcribeAvailable ? (
+        <div className="flex flex-col items-start gap-1.5">
+          <button type="button" data-testid="transcribe" disabled aria-describedby="transcribe-demo-note" className={btnSecondary}>
+            Auto-transcribe
+          </button>
+          <p id="transcribe-demo-note" data-testid="transcribe-note" className="text-xs text-ink-subtle">
+            {TRANSCRIBE_DEMO_MESSAGE}
+          </p>
+        </div>
+      ) : state === "unavailable" ? (
         <p data-testid="transcribe-note" className="text-xs text-ink-subtle">
           Auto-transcribe needs an OpenAI or Groq key
         </p>
@@ -119,6 +132,7 @@ function TranscriptPanel({
   mediaRef,
   lectureId,
   aiConfigured,
+  transcribeAvailable = true,
   onClose,
   onTranscribed,
   id,
@@ -243,7 +257,7 @@ function TranscriptPanel({
         </button>
       </header>
       {words.length === 0 ? (
-        <NoTranscript lectureId={lectureId} aiConfigured={aiConfigured} onTranscribed={onTranscribed} />
+        <NoTranscript lectureId={lectureId} aiConfigured={aiConfigured} transcribeAvailable={transcribeAvailable} onTranscribed={onTranscribed} />
       ) : (
         <div className="relative min-h-0 flex-1">
           <div

@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { getLectureGaps } from "@/lib/gaps";
 import { getSessionLecture, isAiConfigured } from "@/lib/lecture";
 import { liveLectureDisabled } from "@/lib/liveLecture";
+import { isDemoMode } from "@/lib/demoMode";
 import SessionCapture from "@/components/SessionCapture";
 
 export default async function SessionPage(props: PageProps<"/session/[id]">) {
@@ -24,6 +25,7 @@ export default async function SessionPage(props: PageProps<"/session/[id]">) {
       initialStrokes={strokes}
       openGaps={lectureGaps.open}
       liveAvailable={!liveLectureDisabled(process.env)}
+      transcribeAvailable={!isDemoMode(process.env)}
     />
   );
 }

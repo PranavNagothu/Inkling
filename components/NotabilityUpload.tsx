@@ -5,18 +5,20 @@ import type { NotabilityImport } from "@/lib/types";
 import { PDF_ACCEPT, PDF_HEADER_BYTES, checkPdfFile, isPdfHeader } from "@/lib/notability";
 import { DocumentIcon, UploadIcon } from "./icons";
 import { btnPrimary, btnSecondary } from "./ui";
+import { PDF_DEMO_MESSAGE } from "@/lib/demoMode";
 
 type UploadState = { status: "idle" } | { status: "uploading"; name: string } | { status: "error"; error: string };
 
 /**
  * Checks a PDF in the browser (name, type, size and the "%PDF-" signature — the server checks all of
- * it again) and uploads it as the session's current Notability import.
+ * it again) and uploads it as the session's current Notability import. `available` is false in
+ * DEMO_MODE: the controls are shown disabled with a note (and the server answers 403 anyway).
  */
-export function useNotabilityUpload(sessionId: string, onUploaded: (imported: NotabilityImport) => void) {
+export function useNotabilityUpload(sessionId: string, onUploaded: (imported: NotabilityImport) => void, available = true) {
   const [state, setState] = useState<UploadState>({ status: "idle" });
 
   const upload = async (file: File | null) => {
-    if (!file || state.status === "uploading") return;
+    if (!available || !file || state.status === "uploading") return;
     const check = checkPdfFile(file);
     if (!check.ok) return setState({ status: "error", error: check.error });
     const head = new Uint8Array(await file.slice(0, PDF_HEADER_BYTES).arrayBuffer());
@@ -37,17 +39,30 @@ export function useNotabilityUpload(sessionId: string, onUploaded: (imported: No
     }
   };
 
-  return { state, upload, dismiss: () => setState({ status: "idle" }) };
+  return { state, upload, available, dismiss: () => setState({ status: "idle" }) };
 }
 
 /** A visually hidden file input inside a label: stays in the tab order, the label is the target. */
-function FileInput({ testId, label, onFile, disabled }: { testId: string; label: string; onFile: (f: File | null) => void; disabled?: boolean }) {
+function FileInput({
+  testId,
+  label,
+  onFile,
+  disabled,
+  describedBy,
+}: {
+  testId: string;
+  label: string;
+  onFile: (f: File | null) => void;
+  disabled?: boolean;
+  describedBy?: string;
+}) {
   return (
     <input
       type="file"
       accept={PDF_ACCEPT}
       data-testid={testId}
       aria-label={label}
+      aria-describedby={describedBy}
       disabled={disabled}
       className="sr-only"
       onChange={(e) => {
@@ -87,20 +102,24 @@ export function NotabilityDropzone({
   upload,
   state,
   title = "Add your Notability page",
+  available = true,
   children,
 }: {
   upload: (file: File | null) => void;
   state: UploadState;
   title?: string;
+  /** False in DEMO_MODE: the drop zone is shown disabled, with a note. */
+  available?: boolean;
   children?: ReactNode;
 }) {
   const [over, setOver] = useState(false);
   const headingId = useId();
+  const noteId = useId();
   const busy = state.status === "uploading";
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
     setOver(false);
-    void upload(e.dataTransfer.files?.[0] ?? null);
+    if (available) void upload(e.dataTransfer.files?.[0] ?? null);
   };
 
   return (
@@ -128,16 +147,33 @@ export function NotabilityDropzone({
         onDrop={onDrop}
         data-testid="notability-dropzone"
         data-over={over ? "true" : "false"}
-        className={`flex w-full cursor-pointer flex-col items-center gap-3 rounded-lg border border-dashed px-5 py-6 transition-[background-color,border-color,box-shadow] duration-150 focus-within:shadow-[var(--focus-ring)] ${
-          over ? "border-accent bg-accent-soft" : "border-line-strong bg-paper hover:border-ink-subtle hover:bg-chrome"
+        data-available={available ? "true" : "false"}
+        className={`flex w-full flex-col items-center gap-3 rounded-lg border border-dashed px-5 py-6 transition-[background-color,border-color,box-shadow] duration-150 focus-within:shadow-[var(--focus-ring)] ${
+          !available
+            ? "cursor-not-allowed border-line-strong bg-paper opacity-70"
+            : over
+              ? "cursor-pointer border-accent bg-accent-soft"
+              : "cursor-pointer border-line-strong bg-paper hover:border-ink-subtle hover:bg-chrome"
         } ${busy ? "pointer-events-none opacity-70" : ""}`}
       >
         <span className={`${btnPrimary} pointer-events-none`} aria-hidden="true">
           <UploadIcon size={16} />
           {busy ? "Uploading…" : "Choose PDF"}
         </span>
-        <span className="text-sm text-ink-subtle">or drop it here · up to 50 MB</span>
-        <FileInput testId="notability-upload" label="Upload a Notability PDF export" onFile={(f) => void upload(f)} disabled={busy} />
+        {available ? (
+          <span className="text-sm text-ink-subtle">or drop it here · up to 50 MB</span>
+        ) : (
+          <span id={noteId} data-testid="notability-demo-note" className="text-sm text-pretty text-ink-muted">
+            {PDF_DEMO_MESSAGE}
+          </span>
+        )}
+        <FileInput
+          testId="notability-upload"
+          label="Upload a Notability PDF export"
+          onFile={(f) => void upload(f)}
+          disabled={busy || !available}
+          describedBy={available ? undefined : noteId}
+        />
       </label>
 
       <div role="status" aria-live="polite" className="sr-only">
@@ -155,8 +191,36 @@ export function NotabilityDropzone({
 }
 
 /** Toolbar button that swaps in a newer export (the earlier one is kept as history). */
-export function ReplacePdfButton({ upload, state }: { upload: (file: File | null) => void; state: UploadState }) {
+export function ReplacePdfButton({
+  upload,
+  state,
+  available = true,
+}: {
+  upload: (file: File | null) => void;
+  state: UploadState;
+  /** False in DEMO_MODE: shown disabled, the note as its tooltip and description. */
+  available?: boolean;
+}) {
   const busy = state.status === "uploading";
+  const noteId = useId();
+  if (!available) {
+    return (
+      <button
+        type="button"
+        disabled
+        data-testid="notability-replace-disabled"
+        title={PDF_DEMO_MESSAGE}
+        aria-describedby={noteId}
+        className={`${btnSecondary} cursor-not-allowed opacity-60`}
+      >
+        <UploadIcon size={16} />
+        Replace PDF
+        <span id={noteId} className="sr-only">
+          {PDF_DEMO_MESSAGE}
+        </span>
+      </button>
+    );
+  }
   return (
     <label className={`${btnSecondary} cursor-pointer focus-within:shadow-[var(--focus-ring)] ${busy ? "opacity-60" : ""}`}>
       <UploadIcon size={16} />

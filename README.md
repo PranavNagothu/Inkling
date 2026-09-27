@@ -63,6 +63,15 @@ reading "forgot the inner derivative", the re-explanation; answer the check ques
 **→ the 04:10 gap** (Replay 20 s) **→ Compare with Notability** (overlay slider) **→ Progress** (gap
 resolved in Session 2, class hotspots) **→ About** (`/about`: backend, AI provider, voice, attribution).
 
+### The public demo (Railway)
+
+<https://inklingapp.tech> runs the same demo on Railway. It is one Docker service with SQLite on a `/data` volume and `DEMO_MODE=1`:
+
+- Uploads, Whisper and Live lecture answer 403, and their controls are shown disabled with a note.
+- Maya's sessions are rebuilt every 30 minutes.
+
+`npm run start:railway` is the entry point. [`docs/railway.md`](docs/railway.md) has the click-by-click setup, variables and DNS.
+
 ### Using a real lecture
 
 Add it with **Add lecture** (audio or video, plus `.vtt`/`.srt` captions, or Whisper with an OpenAI

@@ -1,18 +1,41 @@
 // Small request guards shared by route handlers.
 
+/** `host[:port]` as the URL parser sees it under `protocol`: lowercased, default port dropped. */
+function canonicalHost(host: string | null | undefined, protocol: string): string | null {
+  const h = host?.trim();
+  if (!h || /[\s/@?#\\]/.test(h)) return null;
+  try {
+    return new URL(`${protocol}//${h}`).host;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Browsers send Origin on POST (fetch, forms and sendBeacon alike); refuse cross-site writes (the
  * app has no auth to lean on, so this blocks a malicious page from posting to a local server).
  * Non-browser clients (curl, Playwright's request fixture) send no Origin and are allowed.
+ *
+ * The Origin's host is compared with the request's own host: the Host header, or the first
+ * X-Forwarded-Host, which a reverse proxy (Railway's edge, Vercel, nginx without
+ * `proxy_set_header Host`) may use for the public domain while Host names the upstream. Trusting
+ * X-Forwarded-Host is safe here: a cross-site page can't add that header without a CORS preflight,
+ * which this app never grants. Case and default ports are normalised (`https://Example.com` and
+ * `example.com:443` match), so the same check works on localhost, *.up.railway.app and a custom
+ * domain behind TLS termination.
  */
 export function isSameOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
   if (!origin) return true;
+  let url: URL;
   try {
-    return new URL(origin).host === request.headers.get("host");
+    url = new URL(origin);
   } catch {
     return false;
   }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  const candidates = [request.headers.get("host"), request.headers.get("x-forwarded-host")?.split(",")[0]];
+  return candidates.some((h) => canonicalHost(h, url.protocol) === url.host);
 }
 
 /**

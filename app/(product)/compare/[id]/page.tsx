@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { getTimeline } from "@/lib/analyze";
 import CompareView from "@/components/CompareView";
+import { isDemoMode } from "@/lib/demoMode";
 
 export const metadata: Metadata = {
   title: "Compare with Notability · Inkling",
@@ -27,6 +28,12 @@ export default async function ComparePage(props: PageProps<"/compare/[id]">) {
         }
       : null;
   return (
-    <CompareView session={session} strokes={strokes} initialTimeline={initialTimeline} initialImport={notability?.import ?? null} />
+    <CompareView
+      session={session}
+      strokes={strokes}
+      initialTimeline={initialTimeline}
+      initialImport={notability?.import ?? null}
+      pdfUploadAvailable={!isDemoMode(process.env)}
+    />
   );
 }

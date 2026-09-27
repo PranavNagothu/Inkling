@@ -21,6 +21,7 @@ import { getDb } from "../db";
 import { publicHelp, toClientEvent } from "../events";
 import { attachHistory, withLectureLock } from "../gaps";
 import { getSessionLecture } from "../lecture";
+import { ttsDirSetting } from "../paths";
 import { formatClock } from "../time";
 import { buildRecap, type RecapPayload } from "../recap";
 import type { HelpCard, HelpSource, PublicHelpCard, Revision, RevisionReading, Session, TimelineEvent, TranscriptWord } from "../types";
@@ -118,7 +119,7 @@ export function createAiService(deps: AiServiceDeps = {}) {
     const sel = selectProvider(env(), { fetch: deps.fetch });
     return deps.provider && sel.provider ? { ...sel, provider: deps.provider } : sel;
   };
-  const ttsDir = () => deps.ttsDir ?? resolve(/*turbopackIgnore: true*/ process.cwd(), env().INKLING_TTS_DIR || "data/tts");
+  const ttsDir = () => deps.ttsDir ?? resolve(/*turbopackIgnore: true*/ process.cwd(), ttsDirSetting(env()));
 
   async function load(eventId: string): Promise<{ event: TimelineEvent; session: Session } | Fail> {
     const db = getDb();

@@ -47,4 +47,50 @@ describe('createKeyedMutex', () => {
     await mutex.run('b', async () => 2);
     expect(mutex.size()).toBe(0);
   });
+  it('is re-entrant within the task holding the key (no self-deadlock), still exclusive for others', async () => {
+    const mutex = createKeyedMutex();
+    const log: string[] = [];
+    const outer = mutex.run('k', async () => {
+      log.push('outer:start');
+      await tick();
+      // Nested on the same key: runs now instead of queueing behind itself.
+      const inner = await mutex.run('k', async () => {
+        await tick();
+        log.push('inner');
+        return 'inner';
+      });
+      await tick();
+      log.push('outer:end');
+      return inner;
+    });
+    const other = mutex.run('k', async () => {
+      log.push('other');
+    });
+    expect(await outer).toBe('inner');
+    await other;
+    expect(log).toEqual(['outer:start', 'inner', 'outer:end', 'other']);
+  });
+
+  it('does not let work left running after a task settles bypass the lock', async () => {
+    const mutex = createKeyedMutex();
+    const log: string[] = [];
+    let late!: Promise<void>;
+    let fired!: () => void;
+    const timerFired = new Promise<void>((r) => (fired = r));
+    await mutex.run('k', async () => {
+      // Fire-and-forget: this callback inherits the task's async context but runs after it settles.
+      setTimeout(() => {
+        late = mutex.run('k', async () => void log.push('late'));
+        fired();
+      }, 5);
+    });
+    let releaseBlocker!: () => void;
+    const blocker = mutex.run('k', () => new Promise<void>((r) => (releaseBlocker = r)).then(() => void log.push('blocker')));
+    await timerFired;
+    await tick();
+    expect(log).toEqual([]); // queued behind the blocker, not re-entered
+    releaseBlocker();
+    await Promise.all([blocker, late]);
+    expect(log).toEqual(['blocker', 'late']);
+  });
 });

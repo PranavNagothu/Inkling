@@ -8,6 +8,7 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { envKey, trimSlash, type Env } from "./ai/compat";
+import { isDemoMode } from "./demoMode";
 import { GROQ_BASE_URL } from "./ai/groq";
 import { whisperToWords, type WhisperVerboseResponse } from "./whisper";
 import type { TranscriptWord } from "./types";
@@ -36,9 +37,12 @@ export interface Transcriber {
   maxBytes: number;
 }
 
-/** Which Whisper service transcribes lectures, or null (no key, or INKLING_DISABLE_AI=1). */
+/**
+ * Which Whisper service transcribes lectures, or null (no key, INKLING_DISABLE_AI=1, or DEMO_MODE:
+ * the public demo is offline even when GROQ_API_KEY is set for the landing assistant).
+ */
 export function selectTranscriber(env: Env = process.env): Transcriber | null {
-  if (env.INKLING_DISABLE_AI === "1") return null;
+  if (env.INKLING_DISABLE_AI === "1" || isDemoMode(env)) return null;
   const openai = envKey(env, "OPENAI_API_KEY");
   if (openai) {
     return {

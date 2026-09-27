@@ -1,18 +1,19 @@
 import "server-only";
 
-// Where lecture media lives on disk. Uploads go to INKLING_UPLOAD_DIR (default data/uploads, which
-// is gitignored); the demo lecture lives in public/demo. Paths stored in the DB are relative to the
+// Where lecture media lives on disk. Uploads go to INKLING_UPLOAD_DIR (default
+// <INKLING_DATA_DIR>/uploads, i.e. data/uploads, which is gitignored; see lib/paths); the demo lecture lives in public/demo. Paths stored in the DB are relative to the
 // project root and are always server-generated.
 import { mkdirSync } from "node:fs";
 import { basename, dirname, relative, resolve, sep } from "node:path";
 import { isStoredPdfName } from "./notability";
 import { isStoredFileName } from "./upload";
 import { DEMO_MEDIA_PATH } from "./demo";
+import { uploadDirSetting } from "./paths";
 
 const root = () => resolve(/*turbopackIgnore: true*/ process.cwd());
 
 export function uploadDir(): string {
-  return resolve(root(), process.env.INKLING_UPLOAD_DIR || "data/uploads");
+  return resolve(root(), uploadDirSetting());
 }
 
 /** Absolute destination for a new upload plus the relative path to store. Creates the directory. */
